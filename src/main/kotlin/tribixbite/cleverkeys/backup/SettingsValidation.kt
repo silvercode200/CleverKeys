@@ -318,6 +318,9 @@ object SettingsValidation {
             "margin_right_portrait_unfolded", "margin_right_landscape_unfolded",
         )) put(k, 0..45)
 
+        // Compact mode width (T2)
+        put("compact_width", 50..90)
+
         // Legacy horizontal_margin (kept for backward compatibility, 0-200 dp)
         for (k in listOf(
             "horizontal_margin_portrait", "horizontal_margin_landscape",
@@ -482,6 +485,7 @@ object SettingsValidation {
         "margin_left_portrait_unfolded", "margin_left_landscape_unfolded",
         "margin_right_portrait", "margin_right_landscape",
         "margin_right_portrait_unfolded", "margin_right_landscape_unfolded",
+        "compact_width",
         "horizontal_margin_portrait", "horizontal_margin_landscape",
         "horizontal_margin_portrait_unfolded", "horizontal_margin_landscape_unfolded",
         "custom_border_radius",

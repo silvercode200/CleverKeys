@@ -142,6 +142,44 @@ internal fun SettingsActivity.AppearanceSection() {
                     displayValue = "$marginRightLandscape%"
                 )
 
+                // Compact mode (T2): narrow the IME window itself and anchor it
+                // to one edge — keyboard within thumb reach on tablets. Touches
+                // outside the window go straight to the app.
+                SettingsSwitch(
+                    title = stringResource(R.string.appearance_compact_mode_title),
+                    description = stringResource(R.string.appearance_compact_mode_desc),
+                    checked = compactEnabled,
+                    onCheckedChange = {
+                        compactEnabled = it
+                        saveSetting("compact_mode", it)
+                    }
+                )
+
+                if (compactEnabled) {
+                    SettingsSlider(
+                        title = stringResource(R.string.appearance_compact_width_title),
+                        description = stringResource(R.string.appearance_compact_width_desc),
+                        value = compactWidth.toFloat(),
+                        valueRange = 50f..90f,
+                        steps = 40,
+                        onValueChange = {
+                            compactWidth = it.toInt()
+                            saveSetting("compact_width", compactWidth)
+                        },
+                        displayValue = "$compactWidth%"
+                    )
+
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_compact_side_title),
+                        description = stringResource(R.string.appearance_compact_side_desc),
+                        checked = compactSideRight,
+                        onCheckedChange = {
+                            compactSideRight = it
+                            saveSetting("compact_side_right", it)
+                        }
+                    )
+                }
+
                 SettingsSlider(
                     title = stringResource(R.string.appearance_label_brightness_title),
                     description = stringResource(R.string.appearance_label_brightness_desc),

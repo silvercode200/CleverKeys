@@ -68,6 +68,11 @@ internal val SETTINGS_DEFAULTS: Map<String, PrefValue> = mapOf(
     "margin_right_portrait" to PrefValue.IntV(Defaults.MARGIN_RIGHT_PORTRAIT),
     "margin_right_landscape" to PrefValue.IntV(Defaults.MARGIN_RIGHT_LANDSCAPE),
 
+    // ── Compact mode (T2) ─────────────────────────────────────────────
+    "compact_mode" to PrefValue.Bool(Defaults.COMPACT_MODE),
+    "compact_width" to PrefValue.IntV(Defaults.COMPACT_WIDTH),
+    "compact_side_right" to PrefValue.Bool(Defaults.COMPACT_SIDE_RIGHT),
+
     // ── Layout ────────────────────────────────────────────────────────
     "show_numpad" to PrefValue.Str(Defaults.SHOW_NUMPAD),
     "numpad_layout" to PrefValue.Str(Defaults.NUMPAD_LAYOUT),

@@ -153,6 +153,23 @@ class ConfigDefaultsTest {
         assertThat(Defaults.MARGIN_RIGHT_LANDSCAPE).isEqualTo(5)
     }
 
+    // ── Compact mode (T2) ──────────────────────────────────────────────
+
+    @Test
+    fun `compact mode default is off`() {
+        assertThat(Defaults.COMPACT_MODE).isFalse()
+    }
+
+    @Test
+    fun `compact width default is 60 percent`() {
+        assertThat(Defaults.COMPACT_WIDTH).isEqualTo(60)
+    }
+
+    @Test
+    fun `compact side default is right`() {
+        assertThat(Defaults.COMPACT_SIDE_RIGHT).isTrue()
+    }
+
     @Test
     fun `horizontal margin portrait default is 3`() {
         assertThat(Defaults.HORIZONTAL_MARGIN_PORTRAIT).isEqualTo(3)

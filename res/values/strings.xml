@@ -540,6 +540,13 @@
     <string name="appearance_left_margin_landscape_desc" formatted="false">Left margin as % of screen width</string>
     <string name="appearance_right_margin_landscape_title">Right Margin (Landscape)</string>
     <string name="appearance_right_margin_landscape_desc" formatted="false">Right margin as % of screen width</string>
+    <string name="appearance_compact_mode_title">Compact Mode</string>
+    <string name="appearance_compact_mode_desc" formatted="false">Narrow the keyboard to a share of the screen width, anchored to one edge (thumb-friendly on tablets). Taps beside it reach the app.</string>
+    <string name="appearance_compact_width_title">Compact Width</string>
+    <string name="appearance_compact_width_desc" formatted="false">Keyboard width as % of screen width</string>
+    <string name="appearance_compact_side_title">Anchor to Right Edge</string>
+    <string name="appearance_compact_side_desc" formatted="false">Off = anchor to the left edge</string>
+    <string name="compact_tile_label">Keyboard Compact</string>
     <string name="appearance_label_brightness_title">Label Brightness</string>
     <string name="appearance_label_brightness_desc" formatted="false">Brightness of key labels (0–100%)</string>
     <string name="appearance_keyboard_opacity_title">Keyboard Opacity</string>

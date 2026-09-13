@@ -86,6 +86,11 @@ object SettingsResetPolicy {
         put("margin_right_portrait", Defaults.MARGIN_RIGHT_PORTRAIT)
         put("margin_right_landscape", Defaults.MARGIN_RIGHT_LANDSCAPE)
 
+        // Compact mode (T2)
+        put("compact_mode", Defaults.COMPACT_MODE)
+        put("compact_width", Defaults.COMPACT_WIDTH)
+        put("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
+
         // Short gestures
         put("short_gestures_enabled", Defaults.SHORT_GESTURES_ENABLED)
         put("short_gesture_min_distance", Defaults.SHORT_GESTURE_MIN_DISTANCE)

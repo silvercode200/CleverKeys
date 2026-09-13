@@ -59,6 +59,26 @@ class SettingsRangeDriftTest {
             .isNull()
     }
 
+    // ── T2 compact mode: slider range 50..90 must survive import ──────
+
+    @Test
+    fun compactWidth_sliderBounds_importCleanly() {
+        for (v in listOf(50, 60, 80, 90)) {
+            assertWithMessage("compact_width=$v is UI-selectable (50..90) and must validate")
+                .that(SettingsValidation.validate("compact_width", PrefValue.IntV(v)))
+                .isNull()
+        }
+    }
+
+    @Test
+    fun compactWidth_outOfRange_isRejected() {
+        for (v in listOf(49, 0, -1, 91, 100)) {
+            assertWithMessage("compact_width=$v is outside 50..90 and must be rejected")
+                .that(SettingsValidation.validate("compact_width", PrefValue.IntV(v)))
+                .isNotNull()
+        }
+    }
+
     // ── G-5: the canonical STRING form of clipboard_history_limit must
     //         honor the same 0..500 bound the int form already enforces ──
 

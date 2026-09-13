@@ -351,6 +351,11 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
     internal var marginRightPortrait by mutableIntStateOf(Defaults.MARGIN_RIGHT_PORTRAIT)
     internal var marginRightLandscape by mutableIntStateOf(Defaults.MARGIN_RIGHT_LANDSCAPE)
 
+    // Compact mode (T2): window width % + anchor edge
+    internal var compactEnabled by mutableStateOf(Defaults.COMPACT_MODE)
+    internal var compactWidth by mutableIntStateOf(Defaults.COMPACT_WIDTH)
+    internal var compactSideRight by mutableStateOf(Defaults.COMPACT_SIDE_RIGHT)
+
     // Gesture sensitivity settings
     internal var swipeDistance by mutableIntStateOf(23)
     internal var circleSensitivity by mutableIntStateOf(2)

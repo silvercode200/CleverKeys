@@ -79,6 +79,17 @@ internal fun SettingsActivity.handlePreferenceChanged(sharedPreferences: SharedP
             "margin_right_landscape" -> {
                 marginRightLandscape = prefs.getInt(key, Defaults.MARGIN_RIGHT_LANDSCAPE)
             }
+            // Compact mode (T2): written by the Appearance section and by the
+            // CompactModeTileService QS tile.
+            "compact_mode" -> {
+                compactEnabled = prefs.getBoolean(key, Defaults.COMPACT_MODE)
+            }
+            "compact_width" -> {
+                compactWidth = prefs.getInt(key, Defaults.COMPACT_WIDTH)
+            }
+            "compact_side_right" -> {
+                compactSideRight = prefs.getBoolean(key, Defaults.COMPACT_SIDE_RIGHT)
+            }
             // Gesture sensitivity settings
             "swipe_dist" -> {
                 swipeDistance = prefs.getSafeString(key, Defaults.SWIPE_DIST).toIntOrNull() ?: Defaults.SWIPE_DIST_FALLBACK.toInt()
@@ -225,6 +236,11 @@ internal fun SettingsActivity.loadCurrentSettings() {
         marginLeftLandscape = prefs.getSafeInt("margin_left_landscape", Defaults.MARGIN_LEFT_LANDSCAPE)
         marginRightPortrait = prefs.getSafeInt("margin_right_portrait", Defaults.MARGIN_RIGHT_PORTRAIT)
         marginRightLandscape = prefs.getSafeInt("margin_right_landscape", Defaults.MARGIN_RIGHT_LANDSCAPE)
+
+        // Compact mode (T2)
+        compactEnabled = prefs.getSafeBoolean("compact_mode", Defaults.COMPACT_MODE)
+        compactWidth = prefs.getSafeInt("compact_width", Defaults.COMPACT_WIDTH)
+        compactSideRight = prefs.getSafeBoolean("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
 
         // Visual customization settings
         labelBrightness = prefs.getSafeInt("label_brightness", Defaults.LABEL_BRIGHTNESS)
