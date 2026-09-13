@@ -168,7 +168,13 @@ class WindowLayoutUtilsTest {
         mockkStatic(WindowLayoutUtils::class)
         every { WindowLayoutUtils.configureEdgeToEdge(any()) } just Runs
         every {
-            WindowLayoutUtils.updateSoftInputWindowLayoutParams(any(), any(), any())
+            // T2: the function grew three compact-mode params (with defaults).
+            // Recording the old 3-arg form now hits Kotlin's synthetic
+            // $default bridge, which double-dispatches inside the mockk
+            // recorder and throws — the full 6-arg form is the real method.
+            WindowLayoutUtils.updateSoftInputWindowLayoutParams(
+                any(), any(), any(), any(), any(), any()
+            )
         } answers { callOriginal() }
         every {
             WindowLayoutUtils.updateLayoutHeightOf(any<Window>(), any())
