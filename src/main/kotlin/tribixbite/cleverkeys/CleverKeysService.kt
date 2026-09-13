@@ -580,6 +580,12 @@ class CleverKeysService : InputMethodService(),
 
         // Propagate config to all managers (v1.32.386: delegated to ConfigPropagator)
         _configPropagator?.propagateConfig(newConfig, resources)
+
+        // T2 compact mode: the IME window width/gravity is window state, not
+        // view state, so a pref flip has no other delivery path to it. Re-apply
+        // whenever config changes; no-op when nothing changed (guarded inside
+        // WindowLayoutUtils by width/gravity comparison).
+        updateSoftInputWindowLayoutParams()
     }
 
     /**
@@ -750,7 +756,15 @@ class CleverKeysService : InputMethodService(),
     private fun updateSoftInputWindowLayoutParams() {
         val window = window?.window ?: return
         val inputArea = window.findViewById<View>(android.R.id.inputArea)
-        WindowLayoutUtils.updateSoftInputWindowLayoutParams(window, inputArea, isFullscreenMode)
+        val config = _config
+        WindowLayoutUtils.updateSoftInputWindowLayoutParams(
+            window,
+            inputArea,
+            isFullscreenMode,
+            compactWidthPercent = if (config?.compact_mode == true) config.compact_width else null,
+            compactSideRight = config?.compact_side_right ?: Defaults.COMPACT_SIDE_RIGHT,
+            screenWidthPx = config?.screenWidthPixels ?: 0
+        )
     }
 
     override fun onCurrentInputMethodSubtypeChanged(subtype: InputMethodSubtype) {

@@ -62,6 +62,13 @@ object Defaults {
     const val MARGIN_RIGHT_PORTRAIT = 1       // ~1% of screen width
     const val MARGIN_RIGHT_LANDSCAPE = 5      // ~5% of screen width
 
+    // Compact (one-handed / tablet) mode: the IME window itself is narrowed to
+    // a share of the screen width and anchored to the left or right edge (see
+    // WindowLayoutUtils). Percent of screen width the keyboard window keeps.
+    const val COMPACT_MODE = false
+    const val COMPACT_WIDTH = 60
+    const val COMPACT_SIDE_RIGHT = true
+
     // Legacy compatibility: old dp-based settings used these names
     // HORIZONTAL_MARGIN_PORTRAIT = 3dp, HORIZONTAL_MARGIN_LANDSCAPE = 28dp
     @Deprecated("Use MARGIN_LEFT_* and MARGIN_RIGHT_* instead")
@@ -534,6 +541,12 @@ class Config private constructor(
     @JvmField var keyboardHeightPercent = 0
     @JvmField var screenHeightPixels = 0
     @JvmField var screenWidthPixels = 0
+    // Compact mode: window width = screenWidthPixels * compact_width / 100,
+    // anchored to compact_side_right's edge. Not in ConfigSnapshot: read only
+    // at IME window layout time (CleverKeysService.updateSoftInputWindowLayoutParams).
+    @JvmField var compact_mode = Defaults.COMPACT_MODE
+    @JvmField var compact_width = Defaults.COMPACT_WIDTH
+    @JvmField var compact_side_right = Defaults.COMPACT_SIDE_RIGHT
     @Deprecated("Use margin_left and margin_right instead")
     @JvmField var horizontal_margin = 0f
     @JvmField var key_vertical_margin = 0f
@@ -821,6 +834,13 @@ class Config private constructor(
         // Legacy fallback for horizontal_margin (used by Theme.kt)
         @Suppress("DEPRECATION")
         horizontal_margin = (margin_left + margin_right) / 2
+
+        // Compact mode (T2): clamped so a bad imported value can never shrink
+        // the window to nothing or exceed the screen.
+        compact_mode = _prefs.getBoolean("compact_mode", Defaults.COMPACT_MODE)
+        compact_width = safeGetInt(_prefs, "compact_width", Defaults.COMPACT_WIDTH)
+            .coerceIn(50, 90)
+        compact_side_right = _prefs.getBoolean("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
 
         key_vertical_margin = get_dip_pref(dm, "key_vertical_margin", Defaults.KEY_VERTICAL_MARGIN) / 100
         key_horizontal_margin = get_dip_pref(dm, "key_horizontal_margin", Defaults.KEY_HORIZONTAL_MARGIN) / 100

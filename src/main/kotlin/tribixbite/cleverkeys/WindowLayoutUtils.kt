@@ -216,19 +216,60 @@ object WindowLayoutUtils {
     }
 
     /**
+     * T2 compact mode: window width in px for a [compactWidthPercent] share of a
+     * [screenWidthPx]-wide screen, or `null` for full width (compact off / no
+     * screen metric yet). The percent is clamped by Config (50..90); this clamp
+     * is repeated here so the util is safe for any caller.
+     */
+    @JvmStatic
+    fun computeCompactWidth(screenWidthPx: Int, compactWidthPercent: Int?): Int? {
+        if (compactWidthPercent == null || screenWidthPx <= 0) return null
+        return (screenWidthPx * compactWidthPercent.coerceIn(50, 90) / 100)
+            .coerceAtLeast(1)
+    }
+
+    /**
+     * T2 compact mode: window gravity for a compact window of [compactWidth]
+     * (null = full width): bottom-anchored, plus the chosen horizontal edge.
+     */
+    @JvmStatic
+    fun compactGravity(compactWidth: Int?, compactSideRight: Boolean): Int {
+        return if (compactWidth == null)
+            Gravity.BOTTOM
+        else
+            Gravity.BOTTOM or (if (compactSideRight) Gravity.RIGHT else Gravity.LEFT)
+    }
+
+    /**
      * Updates soft input window layout parameters for IME.
      * Configures edge-to-edge display, window height, input area height, and gravity.
+     *
+     * Compact mode (T2): when [compactWidthPercent] is non-null the IME window
+     * itself is narrowed to that percent of [screenWidthPx] and anchored to the
+     * chosen edge. Touches outside the window frame go straight to the app —
+     * that is why the WINDOW is narrowed instead of drawing a narrow keyboard
+     * inside a full-width window (whose empty area would swallow taps).
+     *
+     * The write-back contract of [configureEdgeToEdge] applies here too: mutate
+     * `window.attributes` copy, then `window.attributes = params`, or the
+     * change never reaches the WindowManager of an already-showing window.
      *
      * @param window The IME window
      * @param inputArea The input area view (typically found via android.R.id.inputArea)
      * @param isFullscreen Whether the IME is in fullscreen mode
+     * @param compactWidthPercent Percent of screen width (50..90), or null = full width
+     * @param compactSideRight Compact anchor edge: true = right, false = left
+     * @param screenWidthPx Screen width in px (screenWidthPixels from Config)
      */
     @JvmStatic
     @Suppress("DEPRECATION")
     fun updateSoftInputWindowLayoutParams(
         window: Window,
         inputArea: View,
-        isFullscreen: Boolean
+        isFullscreen: Boolean,
+        compactWidthPercent: Int? = null,
+        compactSideRight: Boolean = true,
+        screenWidthPx: Int = 0
     ) {
         // Configure edge-to-edge for API 35+
         configureEdgeToEdge(window)
@@ -236,6 +277,19 @@ object WindowLayoutUtils {
         // Set window to WRAP_CONTENT to avoid white bar artifacts during animation
         // MATCH_PARENT causes the window to be full screen, exposing empty space
         updateLayoutHeightOf(window, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        // T2 compact mode: width + horizontal gravity on the window itself.
+        val compactWidth = computeCompactWidth(screenWidthPx, compactWidthPercent)
+        val params = window.attributes
+        if (params != null) {
+            val desiredWidth = compactWidth ?: ViewGroup.LayoutParams.MATCH_PARENT
+            val desiredGravity = compactGravity(compactWidth, compactSideRight)
+            if (params.width != desiredWidth || params.gravity != desiredGravity) {
+                params.width = desiredWidth
+                params.gravity = desiredGravity
+                window.attributes = params
+            }
+        }
 
         // Set input area parent height based on fullscreen mode
         val inputAreaParent = inputArea.parent as? View
