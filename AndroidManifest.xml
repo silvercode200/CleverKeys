@@ -54,6 +54,21 @@
       </intent-filter>
     </service>
 
+    <!-- Quick Settings tile for Compact mode (T2): narrows the IME window to a
+         share of the screen width anchored to one edge. Same API gating as the
+         tile above. -->
+    <service
+        android:name="tribixbite.cleverkeys.CompactModeTileService"
+        android:label="@string/compact_tile_label"
+        android:icon="@drawable/ic_compact_mode"
+        android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+        android:exported="true"
+        tools:targetApi="24">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE"/>
+      </intent-filter>
+    </service>
+
     <activity android:name="tribixbite.cleverkeys.SettingsActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/settingsTheme" android:exported="true" android:directBootAware="true" tools:targetApi="24" android:launchMode="singleTop">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
