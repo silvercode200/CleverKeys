@@ -321,13 +321,20 @@ class WindowLayoutUtilsTest {
      * [WindowLayoutUtils.configureEdgeToEdge] stubbed out (it cannot return in pure JVM — see
      * the class doc).
      */
-    private fun softInputProbe(isFullscreen: Boolean): Triple<Window, WindowManager.LayoutParams, FrameLayout.LayoutParams> {
+    private fun softInputProbe(
+        isFullscreen: Boolean,
+        compactWidthPercent: Int? = null,
+        compactSideRight: Boolean = true,
+        screenWidthPx: Int = 0
+    ): Triple<Window, WindowManager.LayoutParams, FrameLayout.LayoutParams> {
         stubEdgeToEdgeOnly()
 
         val windowAttrs = mockk<WindowManager.LayoutParams>(relaxed = true)
         // MATCH_PARENT is the pre-fix value that produced the full-screen window and the white
         // bar during the show animation.
         windowAttrs.height = ViewGroup.LayoutParams.MATCH_PARENT
+        windowAttrs.width = ViewGroup.LayoutParams.MATCH_PARENT
+        windowAttrs.gravity = Gravity.BOTTOM
         val window = mockk<Window>(relaxed = true)
         every { window.attributes } returns windowAttrs
 
@@ -340,7 +347,10 @@ class WindowLayoutUtilsTest {
         val inputArea = mockk<View>(relaxed = true)
         every { inputArea.parent } returns parent
 
-        WindowLayoutUtils.updateSoftInputWindowLayoutParams(window, inputArea, isFullscreen)
+        WindowLayoutUtils.updateSoftInputWindowLayoutParams(
+            window, inputArea, isFullscreen,
+            compactWidthPercent, compactSideRight, screenWidthPx
+        )
 
         verify(exactly = 1) { WindowLayoutUtils.configureEdgeToEdge(window) }
         verify(exactly = 1) { parent.setBackgroundColor(Color.TRANSPARENT) }
@@ -387,6 +397,63 @@ class WindowLayoutUtilsTest {
         WindowLayoutUtils.updateSoftInputWindowLayoutParams(window, inputArea, false)
         assertThat(windowAttrs.height).isEqualTo(ViewGroup.LayoutParams.WRAP_CONTENT)
         verify(exactly = 1) { inputArea.setBackgroundColor(Color.TRANSPARENT) }
+    }
+
+    // ── T2 compact mode: the IME window itself narrows and anchors to an edge ──
+
+    @Test
+    fun softInputWindow_compact60Right_narrowsWindowAndAnchorsRight() {
+        val (window, windowAttrs, _) = softInputProbe(
+            isFullscreen = false,
+            compactWidthPercent = 60,
+            compactSideRight = true,
+            screenWidthPx = 1280
+        )
+
+        assertThat(windowAttrs.width).isEqualTo(768)
+        assertThat(windowAttrs.gravity).isEqualTo(Gravity.BOTTOM or Gravity.RIGHT)
+        // The write-back contract: mutate-then-setAttributes, or an already-showing
+        // window never relayouts (same class of bug as configureEdgeToEdge).
+        // (At least 2 calls: the WRAP_CONTENT height pass + the compact pass.)
+        verify(atLeast = 1) { window.attributes = windowAttrs }
+    }
+
+    @Test
+    fun softInputWindow_compact50Left_anchorsLeft() {
+        val (_, windowAttrs, _) = softInputProbe(
+            isFullscreen = false,
+            compactWidthPercent = 50,
+            compactSideRight = false,
+            screenWidthPx = 2000
+        )
+
+        assertThat(windowAttrs.width).isEqualTo(1000)
+        assertThat(windowAttrs.gravity).isEqualTo(Gravity.BOTTOM or Gravity.LEFT)
+    }
+
+    @Test
+    fun softInputWindow_compactOff_staysFullWidthBottom() {
+        // Height pre-set to WRAP_CONTENT so the height pass has nothing to
+        // write — then the ONLY thing that could write attributes is a
+        // spurious compact pass, which must not happen when compact is off.
+        stubEdgeToEdgeOnly()
+        val windowAttrs = mockk<WindowManager.LayoutParams>(relaxed = true)
+        windowAttrs.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        windowAttrs.width = ViewGroup.LayoutParams.MATCH_PARENT
+        windowAttrs.gravity = Gravity.BOTTOM
+        val window = mockk<Window>(relaxed = true)
+        every { window.attributes } returns windowAttrs
+        val inputArea = mockk<View>(relaxed = true)
+        every { inputArea.parent } returns null
+
+        WindowLayoutUtils.updateSoftInputWindowLayoutParams(
+            window, inputArea, false,
+            compactWidthPercent = null, compactSideRight = true, screenWidthPx = 1280
+        )
+
+        assertThat(windowAttrs.width).isEqualTo(ViewGroup.LayoutParams.MATCH_PARENT)
+        assertThat(windowAttrs.gravity).isEqualTo(Gravity.BOTTOM)
+        verify(exactly = 0) { window.attributes = windowAttrs }
     }
 
     // =========================================================================
