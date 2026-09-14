@@ -560,8 +560,10 @@ class ReleasePackagingDriftTest {
          */
         val PREFIX_BOOST_ERA_VERSIONS = listOf("1.2.2", "1.2.5", "1.2.8")
 
+        // oleg-custom (T4): INTERNET moved out of the forbidden set — the opt-in
+        // voice feature talks to the user's own server. Still forbidden: any
+        // permission that would let the app OBSERVE the network it is on.
         val FORBIDDEN_PERMISSIONS = listOf(
-            "android.permission.INTERNET",
             "android.permission.ACCESS_NETWORK_STATE",
             "android.permission.ACCESS_WIFI_STATE",
         )
