@@ -37,9 +37,10 @@ import java.net.URL
 object VoiceInputController {
     const val SAMPLE_RATE = 16000
     private const val CONNECT_TIMEOUT_MS = 5_000
-    private const val READ_TIMEOUT_MS = 15_000
+    // 30 s: the whisper server (small model on a busy box) takes ~15-20 s per
+    // utterance; a 15 s read timeout would cut off real answers.
+    private const val READ_TIMEOUT_MS = 30_000
 
-    @JvmField
     @Volatile
     var isRecording: Boolean = false
         private set

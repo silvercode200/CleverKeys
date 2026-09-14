@@ -42,11 +42,12 @@ internal fun SettingsActivity.VoiceSection() {
                     // launcher callback (SettingsActivity) reverts both.
                     voiceInputEnabled = true
                     saveSetting("voice_input_enabled", true)
+                    val activity = this@VoiceSection
                     if (ContextCompat.checkSelfPermission(
-                            this, Manifest.permission.RECORD_AUDIO
+                            activity, Manifest.permission.RECORD_AUDIO
                         ) != android.content.pm.PackageManager.PERMISSION_GRANTED
                     ) {
-                        voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        activity.voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 } else {
                     voiceInputEnabled = false
