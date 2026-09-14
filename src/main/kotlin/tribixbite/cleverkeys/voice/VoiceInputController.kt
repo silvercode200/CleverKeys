@@ -35,6 +35,7 @@ import java.net.URL
  * configured server URL and the RECORD_AUDIO permission before anything else.
  */
 object VoiceInputController {
+    private const val TAG = "VoiceInput"
     const val SAMPLE_RATE = 16000
     private const val CONNECT_TIMEOUT_MS = 5_000
     // 30 s: the whisper server (small model on a busy box) takes ~15-20 s per
@@ -69,22 +70,26 @@ object VoiceInputController {
      */
     fun toggle(context: Context, enabled: Boolean, serverUrl: String, commitText: (String) -> Unit) {
         try {
+            android.util.Log.d(TAG, "toggle: isRecording=$isRecording enabled=$enabled url='$serverUrl'")
             if (isRecording) {
                 stopAndTranscribe()
                 return
             }
             if (!enabled) return // Key is stripped from the layout; defensive no-op
             if (TranscriptionParser.endpointUrl(serverUrl) == null) {
+                android.util.Log.w(TAG, "toggle: no server URL configured")
                 toast(context, R.string.voice_error_no_server)
                 return
             }
             if (!hasRecordPermission(context)) {
+                android.util.Log.w(TAG, "toggle: RECORD_AUDIO not granted")
                 toast(context, R.string.voice_error_no_permission)
                 return
             }
             startRecording(context, serverUrl, commitText)
         } catch (e: Exception) {
             // Absolute backstop: nothing here may take the keyboard down.
+            android.util.Log.e(TAG, "toggle backstop", e)
             isRecording = false
             stopRequested = true
             notifyStateChange()
@@ -108,6 +113,7 @@ object VoiceInputController {
     private fun startRecording(context: Context, serverUrl: String, commitText: (String) -> Unit) {
         val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (minBuf <= 0) {
+            android.util.Log.w(TAG, "startRecording: getMinBufferSize=$minBuf")
             toast(context, R.string.voice_error_start)
             return
         }
@@ -115,14 +121,17 @@ object VoiceInputController {
             AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minBuf * 2)
         } catch (e: Exception) {
+            android.util.Log.w(TAG, "startRecording: AudioRecord ctor failed", e)
             toast(context, R.string.voice_error_start)
             return
         }
         if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+            android.util.Log.w(TAG, "startRecording: state=${recorder.state} (not initialized)")
             try { recorder.release() } catch (_: Exception) {}
             toast(context, R.string.voice_error_start)
             return
         }
+        android.util.Log.i(TAG, "startRecording: AudioRecord initialized, buf=$minBuf")
 
         activeContext = context
         stopRequested = false
@@ -153,10 +162,11 @@ object VoiceInputController {
             isRecording = false
             notifyStateChange()
 
-            if (stopRequested) return@Thread // cancelled (service destroyed)
-            if (!sendRequested) return@Thread // recorder died on its own
+            if (stopRequested) { android.util.Log.i(TAG, "record thread: cancelled"); return@Thread }
+            if (!sendRequested) { android.util.Log.w(TAG, "record thread: ended without send request (recorder died?)"); return@Thread }
 
             val data = pcm.toByteArray()
+            android.util.Log.i(TAG, "record thread: captured ${data.size} bytes (${data.size / 2 / SAMPLE_RATE}s)")
             if (data.size < SAMPLE_RATE / 2) { // < ~0.5 s of audio
                 val ctx = activeContext
                 if (ctx != null) toast(ctx, R.string.voice_error_too_short)
@@ -178,7 +188,10 @@ object VoiceInputController {
         val endpoint = TranscriptionParser.endpointUrl(serverUrl) ?: return
         val wav = WavEncoder.wavBytes(pcm, SAMPLE_RATE)
         try {
+            android.util.Log.i(TAG, "POST $endpoint (${wav.size} bytes wav)")
+            val t0 = System.currentTimeMillis()
             val text = postTranscription(endpoint, wav)
+            android.util.Log.i(TAG, "server answered in ${System.currentTimeMillis() - t0} ms: '$text'")
             if (text != null) {
                 mainHandler.post { commitText(text) }
             } else {
@@ -186,6 +199,7 @@ object VoiceInputController {
                 if (ctx != null) toast(ctx, R.string.voice_error_empty_response)
             }
         } catch (e: Exception) {
+            android.util.Log.w(TAG, "POST failed", e)
             val ctx = activeContext
             if (ctx != null) toast(ctx, R.string.voice_error_server)
         }
