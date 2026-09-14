@@ -209,9 +209,11 @@ class ReleasePackagingDriftTest {
     @Test
     fun manifestRequestsNoNetworkPermission() {
         val main = declaredPermissions(manifest)
-        // The exact set, so a new permission cannot slip in unnoticed under a claim of
-        // "complete privacy". VIBRATE = haptics, READ_USER_DICTIONARY = the system
-        // personal dictionary the suggestion pipeline reads.
+        // oleg-custom fork (T4, 2026-09-14): the "complete privacy (no network)"
+        // contract is superseded by the opt-in voice-input feature — a mic key
+        // that records and POSTs to the user's OWN whisper server. The contract
+        // this now pins: exactly two more permissions than the privacy-era set,
+        // both inert until the user enables the feature in settings.
         assertWithMessage("the release manifest's full permission set")
             .that(main)
             .containsExactly(
@@ -221,6 +223,11 @@ class ReleasePackagingDriftTest {
                 // receivers against third-party broadcast injection. Grantable only
                 // to same-signature apps; grants no capability to this app itself.
                 "tribixbite.cleverkeys.permission.SET_DEBUG_MODE",
+                // T4 voice input: INTERNET reaches only the user-configured server
+                // URL (see VoiceInputController); RECORD_AUDIO is runtime-requested
+                // only at opt-in and the IME never requests it itself.
+                "android.permission.INTERNET",
+                "android.permission.RECORD_AUDIO",
             )
         // The debug overlay merges into the debug APK; assert it adds none either, so an
         // instrumented-test convenience cannot become a shipped permission.
@@ -229,6 +236,8 @@ class ReleasePackagingDriftTest {
             assertWithMessage("the debug manifest overlay must not add permissions")
                 .that(declaredPermissions(debugManifest.readText())).isEmpty()
         }
+        // The privacy-era promise narrows to "no network OBSERVATION permissions":
+        // the app never asks what network it is on.
         for (forbidden in FORBIDDEN_PERMISSIONS) {
             assertWithMessage("'no network access' forbids $forbidden in any manifest")
                 .that(main).doesNotContain(forbidden)
@@ -237,13 +246,15 @@ class ReleasePackagingDriftTest {
 
     @Test
     fun productionSourcesCallNoNetworkApi() {
-        // A missing INTERNET permission already makes a socket throw, but that is a runtime
-        // crash rather than a design guarantee. This pins the stronger, published claim:
-        // production code contains no client of a network stack at all.
+        // oleg-custom fork (T4): the stronger published claim ("production code
+        // contains no client of a network stack at all") is superseded by the
+        // opt-in voice feature. What is still pinned: network APIs live ONLY in
+        // the voice package — every other production source stays network-free.
         val offenders = mutableListOf<String>()
         val sourceRoot = File("src/main/kotlin")
         check(sourceRoot.isDirectory) { "src/main/kotlin not found (wrong CWD?)" }
         sourceRoot.walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach { file ->
+            if (file.path.contains("tribixbite/cleverkeys/voice/")) return@forEach
             file.readLines().forEachIndexed { index, line ->
                 val code = line.substringBefore("//")
                 for (api in NETWORK_API_PATTERNS) {
@@ -252,8 +263,8 @@ class ReleasePackagingDriftTest {
             }
         }
         assertWithMessage(
-            "production Kotlin must not reference a network API — CleverKeys ships with no " +
-                "INTERNET permission and the release notes promise no network access"
+            "production Kotlin outside the voice package must not reference a network API — " +
+                "the only network client is the opt-in voice input"
         ).that(offenders).isEmpty()
     }
 
@@ -527,12 +538,10 @@ class ReleasePackagingDriftTest {
         assertWithMessage("full_description is F-Droid's Description field, limited to 4000 chars")
             .that(full.length).isAtMost(4000)
         // The store copy and the manifest are two halves of the same promise: the listing
-        // claims offline operation while the manifest requests no network permission. Either
-        // one drifting without the other is a published lie.
+        // claims offline operation and the keyboard IS offline by default — the oleg-custom
+        // T4 voice feature is opt-in and only then talks to the user's own server.
         assertWithMessage("the store listing must keep claiming offline/local operation")
             .that(full.lowercase()).contains("offline")
-        assertWithMessage("the store listing must not promise a network feature")
-            .that(declaredPermissions(manifest)).doesNotContain("android.permission.INTERNET")
     }
 
     private companion object {

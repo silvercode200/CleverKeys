@@ -587,6 +587,8 @@ tasks.register('runPureTests', JavaExec) {
     'tribixbite.cleverkeys.DictionaryWordTest',
     'tribixbite.cleverkeys.BeamSearchModelsTest',
     'tribixbite.cleverkeys.ConfigDefaultsTest',
+    'tribixbite.cleverkeys.CompactWindowLayoutTest',
+    'tribixbite.cleverkeys.voice.VoiceInputPureTest',
     'tribixbite.cleverkeys.DictionaryBinFormatTest',
     'tribixbite.cleverkeys.AutocorrectDefaultsDriftTest',
     'tribixbite.cleverkeys.ShortSwipeIntentTest',
