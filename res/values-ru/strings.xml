@@ -995,7 +995,7 @@
     <string name="privacy_delete_data_body">Все собранные данные свайпов будут удалены навсегда.\n\nЭто действие нельзя отменить.</string>
     <string name="privacy_delete_data_done">Все данные свайпов удалены</string>
     <string name="privacy_delete_data_error">Ошибка удаления данных: %1$s</string>
-</resources>
+
 
     <!-- T4: Голосовой ввод (свой whisper-сервер) -->
     <string name="settings_section_voice">🎤 Голосовой ввод</string>
@@ -1012,3 +1012,4 @@
     <string name="voice_test_title">Проверить соединение</string>
     <string name="voice_test_ok">Сервер ответил</string>
     <string name="voice_test_fail">Сервер не отвечает</string>
+</resources>

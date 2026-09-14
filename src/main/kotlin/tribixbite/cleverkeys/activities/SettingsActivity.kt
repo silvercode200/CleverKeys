@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import tribixbite.cleverkeys.theme.KeyboardTheme
 import tribixbite.cleverkeys.langpack.LanguagePackManifest
 import tribixbite.cleverkeys.ui.settings.SearchableSetting
+import tribixbite.cleverkeys.ui.settings.saveSetting
 import tribixbite.cleverkeys.ui.settings.expanderFor
 import tribixbite.cleverkeys.ui.settings.scrollToSetting
 import tribixbite.cleverkeys.ui.settings.sectionDisplayName
@@ -356,6 +357,23 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
     internal var compactWidth by mutableIntStateOf(Defaults.COMPACT_WIDTH)
     internal var compactSideRight by mutableStateOf(Defaults.COMPACT_SIDE_RIGHT)
 
+    // Voice input (T4): feature toggle + self-hosted whisper server URL
+    internal var voiceInputEnabled by mutableStateOf(Defaults.VOICE_INPUT_ENABLED)
+    internal var voiceServerUrl by mutableStateOf(Defaults.VOICE_SERVER_URL)
+
+    /**
+     * T4: RECORD_AUDIO runtime request. Requested ONLY when the user flips the
+     * voice toggle on; on denial the toggle reverts (the feature stays inert).
+     */
+    internal val voicePermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            voiceInputEnabled = false
+            saveSetting("voice_input_enabled", false)
+        }
+    }
+
     // Gesture sensitivity settings
     internal var swipeDistance by mutableIntStateOf(23)
     internal var circleSensitivity by mutableIntStateOf(2)
@@ -512,6 +530,9 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
     internal var appearanceSectionExpanded: Boolean  // No longer default expanded since Theme is in Activities
         get() = settingsViewModel.appearanceSectionExpanded
         set(value) { settingsViewModel.appearanceSectionExpanded = value }
+    internal var voiceSectionExpanded: Boolean  // T4
+        get() = settingsViewModel.voiceSectionExpanded
+        set(value) { settingsViewModel.voiceSectionExpanded = value }
     internal var swipeTrailSectionExpanded: Boolean
         get() = settingsViewModel.swipeTrailSectionExpanded
         set(value) { settingsViewModel.swipeTrailSectionExpanded = value }

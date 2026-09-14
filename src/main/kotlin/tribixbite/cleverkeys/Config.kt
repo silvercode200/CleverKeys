@@ -69,6 +69,12 @@ object Defaults {
     const val COMPACT_WIDTH = 60
     const val COMPACT_SIDE_RIGHT = true
 
+    // Voice input (T4): self-hosted whisper.cpp server (see tablet/t4-voice-design.md).
+    // DISABLED by default — the mic key is stripped from the layout until the user
+    // turns the feature on and configures a server URL.
+    const val VOICE_INPUT_ENABLED = false
+    const val VOICE_SERVER_URL = ""
+
     // Legacy compatibility: old dp-based settings used these names
     // HORIZONTAL_MARGIN_PORTRAIT = 3dp, HORIZONTAL_MARGIN_LANDSCAPE = 28dp
     @Deprecated("Use MARGIN_LEFT_* and MARGIN_RIGHT_* instead")
@@ -547,6 +553,11 @@ class Config private constructor(
     @JvmField var compact_mode = Defaults.COMPACT_MODE
     @JvmField var compact_width = Defaults.COMPACT_WIDTH
     @JvmField var compact_side_right = Defaults.COMPACT_SIDE_RIGHT
+    // Voice input (T4): read by LayoutModifier (key visibility) and
+    // VoiceInputController (network target). Like compact_mode, not in
+    // ConfigSnapshot — not a hot-path value.
+    @JvmField var voice_input_enabled = Defaults.VOICE_INPUT_ENABLED
+    @JvmField var voice_server_url = Defaults.VOICE_SERVER_URL
     @Deprecated("Use margin_left and margin_right instead")
     @JvmField var horizontal_margin = 0f
     @JvmField var key_vertical_margin = 0f
@@ -841,6 +852,10 @@ class Config private constructor(
         compact_width = safeGetInt(_prefs, "compact_width", Defaults.COMPACT_WIDTH)
             .coerceIn(50, 90)
         compact_side_right = _prefs.getBoolean("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
+
+        // Voice input (T4): empty URL = feature inert even if the flag flips.
+        voice_input_enabled = _prefs.getBoolean("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)
+        voice_server_url = _prefs.getString("voice_server_url", Defaults.VOICE_SERVER_URL) ?: Defaults.VOICE_SERVER_URL
 
         key_vertical_margin = get_dip_pref(dm, "key_vertical_margin", Defaults.KEY_VERTICAL_MARGIN) / 100
         key_horizontal_margin = get_dip_pref(dm, "key_horizontal_margin", Defaults.KEY_HORIZONTAL_MARGIN) / 100

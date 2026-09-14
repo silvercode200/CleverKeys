@@ -1383,7 +1383,7 @@
     <string name="privacy_delete_data_body">This will permanently delete all collected swipe data.\n\nThis action cannot be undone.</string>
     <string name="privacy_delete_data_done">All swipe data deleted</string>
     <string name="privacy_delete_data_error">Error deleting data: %1$s</string>
-</resources>
+
 
     <!-- T4: Voice input (self-hosted whisper server) -->
     <string name="settings_section_voice">🎤 Voice input</string>
@@ -1400,3 +1400,4 @@
     <string name="voice_test_title">Test connection</string>
     <string name="voice_test_ok">Server responded</string>
     <string name="voice_test_fail">Server did not respond</string>
+</resources>

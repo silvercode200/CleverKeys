@@ -61,6 +61,7 @@ import tribixbite.cleverkeys.ui.settings.sections.MultiLanguageSection
 import tribixbite.cleverkeys.ui.settings.sections.SwipeTypingSection
 import tribixbite.cleverkeys.ui.settings.sections.PrivacySection
 import tribixbite.cleverkeys.ui.settings.sections.SwipeTrailSection
+import tribixbite.cleverkeys.ui.settings.sections.VoiceSection
 import tribixbite.cleverkeys.ui.settings.sections.TestKeyboardSection
 import tribixbite.cleverkeys.ui.settings.sections.VersionActionsSection
 
@@ -231,6 +232,9 @@ internal fun SettingsActivity.SettingsScreen() {
 
             // Appearance Section (Collapsible) - height/visual settings
             AppearanceSection()
+
+            // Voice Input Section (T4) - mic → self-hosted whisper server
+            VoiceSection()
 
             // Swipe Trail Section (Collapsible)
             SwipeTrailSection()

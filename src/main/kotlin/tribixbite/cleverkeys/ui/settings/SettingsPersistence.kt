@@ -90,6 +90,13 @@ internal fun SettingsActivity.handlePreferenceChanged(sharedPreferences: SharedP
             "compact_side_right" -> {
                 compactSideRight = prefs.getBoolean(key, Defaults.COMPACT_SIDE_RIGHT)
             }
+            // Voice input (T4): written by the Voice section.
+            "voice_input_enabled" -> {
+                voiceInputEnabled = prefs.getSafeBoolean(key, Defaults.VOICE_INPUT_ENABLED)
+            }
+            "voice_server_url" -> {
+                voiceServerUrl = prefs.getSafeString(key, Defaults.VOICE_SERVER_URL)
+            }
             // Gesture sensitivity settings
             "swipe_dist" -> {
                 swipeDistance = prefs.getSafeString(key, Defaults.SWIPE_DIST).toIntOrNull() ?: Defaults.SWIPE_DIST_FALLBACK.toInt()
@@ -241,6 +248,10 @@ internal fun SettingsActivity.loadCurrentSettings() {
         compactEnabled = prefs.getSafeBoolean("compact_mode", Defaults.COMPACT_MODE)
         compactWidth = prefs.getSafeInt("compact_width", Defaults.COMPACT_WIDTH)
         compactSideRight = prefs.getSafeBoolean("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
+
+        // Voice input (T4)
+        voiceInputEnabled = prefs.getSafeBoolean("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)
+        voiceServerUrl = prefs.getSafeString("voice_server_url", Defaults.VOICE_SERVER_URL)
 
         // Visual customization settings
         labelBrightness = prefs.getSafeInt("label_brightness", Defaults.LABEL_BRIGHTNESS)

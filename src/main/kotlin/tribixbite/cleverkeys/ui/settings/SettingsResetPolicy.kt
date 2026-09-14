@@ -91,6 +91,10 @@ object SettingsResetPolicy {
         put("compact_width", Defaults.COMPACT_WIDTH)
         put("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
 
+        // Voice input (T4)
+        put("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)
+        put("voice_server_url", Defaults.VOICE_SERVER_URL)
+
         // Short gestures
         put("short_gestures_enabled", Defaults.SHORT_GESTURES_ENABLED)
         put("short_gesture_min_distance", Defaults.SHORT_GESTURE_MIN_DISTANCE)

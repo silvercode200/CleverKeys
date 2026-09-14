@@ -61,6 +61,8 @@ class SettingsViewModel : ViewModel() {
     var advancedSectionExpanded by mutableStateOf(false)
     var infoSectionExpanded by mutableStateOf(false)
     var helpSectionExpanded by mutableStateOf(false)
+    /** T4: voice input section. */
+    var voiceSectionExpanded by mutableStateOf(false)
 
     // ── Test keyboard panel (#1134) ───────────────────────────────────────────
 
