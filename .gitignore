@@ -239,3 +239,8 @@ src/androidTest/assets/ctc_bench/*.onnx
 
 # Decoded at deploy/dev time from ctc_vocab.bin.b64 (F-Droid scanner cleanliness)
 web_demo/demo/models/ctc_vocab.bin
+
+# User-frequency dictionary build artifacts (TG-PHONE2 T3): derived from
+# private session logs, injected at build time from ~/dict-artifacts —
+# never committed.
+src/main/assets/bigrams/ru_bigrams.json
