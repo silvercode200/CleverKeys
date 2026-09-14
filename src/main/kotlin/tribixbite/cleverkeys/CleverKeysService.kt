@@ -474,6 +474,10 @@ class CleverKeysService : InputMethodService(),
             _instance = null
         }
 
+        // T4: never leave the mic open / a request in flight past the service's
+        // lifetime. cancel() stops recording without sending anything.
+        try { tribixbite.cleverkeys.voice.VoiceInputController.cancel() } catch (_: Exception) {}
+
         // Unregister theme change broadcast receiver
         _themeChangeReceiver?.let {
             try {

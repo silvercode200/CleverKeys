@@ -79,6 +79,25 @@ class Keyboard2View @JvmOverloads constructor(
 
     private var _keyboard: KeyboardData? = null
 
+    // T4 voice input: while recording, the space bar's centre label is replaced
+    // by a red "recording" badge (see onDraw). Set from VoiceInputController
+    // state changes via KeyboardReceiver.
+    @Volatile private var voiceRecording: Boolean = false
+    private val _spaceKey: KeyValue by lazy { KeyValue.getKeyByName("space") }
+    private val _recordingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFF44336.toInt() // material red 500
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+    }
+
+    /** Mirror the voice-recording state onto the space-bar badge and repaint. */
+    fun setVoiceRecording(recording: Boolean) {
+        if (voiceRecording != recording) {
+            voiceRecording = recording
+            postInvalidate()
+        }
+    }
+
     /** The key holding the shift key is used to set shift state from autocapitalisation. */
     private var _shift_kv: KeyValue? = null
     private var _shift_key: KeyboardData.Key? = null
@@ -1585,7 +1604,9 @@ class Keyboard2View @JvmOverloads constructor(
                 )
 
                 drawKeyFrame(canvas, x, y, keyW, keyH, tc_key)
-                if (k.keys[0] != null)
+                if (voiceRecording && kv0 != null && kv0 == _spaceKey)
+                    drawVoiceRecordingBadge(canvas, keyW / 2f + x, y, keyH)
+                else if (k.keys[0] != null)
                     drawLabel(canvas, k.keys[0]!!, keyW / 2f + x, y, keyH, isKeyDown, tc_key)
                 // #171: a custom short-swipe mapping REPLACES the default sublabel in its
                 // slot — suppress the default glyph wherever a mapping covers the slot, or
@@ -1752,6 +1773,16 @@ class Keyboard2View @JvmOverloads constructor(
             return _theme.secondaryLabelColor
         }
         return if (sublabel) _theme.subLabelColor else _theme.labelColor
+    }
+
+    /**
+     * T4: replaces the space bar's label while voice recording is active.
+     * A self-contained paint (not themed) — the recording state is a transient,
+     * attention-grabbing override.
+     */
+    private fun drawVoiceRecordingBadge(canvas: Canvas, x: Float, y: Float, keyH: Float) {
+        _recordingPaint.textSize = keyH * 0.22f
+        canvas.drawText("● ЗАПИСЬ", x, (keyH - _recordingPaint.ascent() - _recordingPaint.descent()) / 2f + y, _recordingPaint)
     }
 
     private fun drawLabel(canvas: Canvas, kv: KeyValue, x: Float, y: Float, keyH: Float, isKeyDown: Boolean, tc: Theme.Computed.Key) {

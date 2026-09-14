@@ -118,6 +118,7 @@ object KeyLabels {
             KeyValue.Event.CAPS_LOCK -> getString(R.string.key_descr_capslock)
             KeyValue.Event.SWITCH_VOICE_TYPING,
             KeyValue.Event.SWITCH_VOICE_TYPING_CHOOSER -> getString(R.string.key_descr_voice_typing)
+            KeyValue.Event.VOICE_RECORD -> getString(R.string.key_descr_voice_record)
             KeyValue.Event.CONFIG -> getString(R.string.key_descr_config)
             KeyValue.Event.ACTION -> getString(R.string.key_descr_action)
         }

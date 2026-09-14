@@ -5,7 +5,9 @@
   <!-- #169: switch_forward/switch_backward are `loc` so the extra-keys checkboxes govern
        them (defaultChecked=true keeps them visible for multi-layout users by default;
        LayoutModifier still hides them when only one layout is enabled). -->
-  <key width="4.4" key0="space" key7="loc switch_forward" key8="loc switch_backward" key5="cursor_left" key6="cursor_right"/>
+  <!-- T4: key1 (NW corner) = built-in voice record; stripped by LayoutModifier
+       when the voice feature is off (default), leaving the stock space bar. -->
+  <key width="4.4" key0="space" key1="voice_record" key7="loc switch_forward" key8="loc switch_backward" key5="cursor_left" key6="cursor_right"/>
   <key width="1.1" key0="loc compose" key7="up" key6="right" key5="left" key8="down" key1="doc_home" key2="loc page_up" key3="doc_end" key4="loc page_down"/>
   <key width="1.7" key0="enter" key1="loc voice_typing" key2="action"/>
 </row>

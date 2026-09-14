@@ -255,6 +255,11 @@ object LayoutModifier {
                     KeyValue.Event.SWITCH_VOICE_TYPING_CHOOSER -> {
                         return if (globalConfig.shouldOfferVoiceTyping) orig else null
                     }
+                    // T4: the mic corner-key only exists when the user turned the
+                    // feature on in settings (off by default — stock layout).
+                    KeyValue.Event.VOICE_RECORD -> {
+                        return if (globalConfig.voice_input_enabled) orig else null
+                    }
                     else -> {}
                 }
             }

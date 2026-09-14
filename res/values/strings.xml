@@ -20,6 +20,7 @@
     <string name="key_descr_switch_backward">Switch to previous keyboard layout</string>
     <string name="key_descr_change_method">Switch keyboard</string>
     <string name="key_descr_voice_typing">Voice typing</string>
+    <string name="key_descr_voice_record">Voice input (record and transcribe)</string>
     <string name="key_descr_copy">Copy</string>
     <string name="key_descr_copy_private">Private copy (into CleverKeys only, not the system clipboard)</string>
     <string name="key_descr_paste">Paste</string>
@@ -1383,3 +1384,19 @@
     <string name="privacy_delete_data_done">All swipe data deleted</string>
     <string name="privacy_delete_data_error">Error deleting data: %1$s</string>
 </resources>
+
+    <!-- T4: Voice input (self-hosted whisper server) -->
+    <string name="settings_section_voice">🎤 Voice input</string>
+    <string name="voice_input_enabled_title">Voice input</string>
+    <string name="voice_input_enabled_desc" formatted="false">Microphone button in the corner of the space bar: swipe to the corner to record, swipe again to insert the transcribed text. Off by default; audio goes only to your own server.</string>
+    <string name="voice_server_url_title">Server URL</string>
+    <string name="voice_server_url_desc" formatted="false">Whisper server address, e.g. http://192.168.1.139:8090</string>
+    <string name="voice_error_no_server">Voice server is not configured</string>
+    <string name="voice_error_no_permission">Microphone permission is not granted</string>
+    <string name="voice_error_start">Could not start recording</string>
+    <string name="voice_error_too_short">Recording too short</string>
+    <string name="voice_error_server">Voice server unavailable</string>
+    <string name="voice_error_empty_response">No speech recognized</string>
+    <string name="voice_test_title">Test connection</string>
+    <string name="voice_test_ok">Server responded</string>
+    <string name="voice_test_fail">Server did not respond</string>

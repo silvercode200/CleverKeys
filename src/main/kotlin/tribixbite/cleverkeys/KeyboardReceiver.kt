@@ -27,6 +27,7 @@ import tribixbite.cleverkeys.gif.GifAssetManager
 import tribixbite.cleverkeys.gif.GifInsertPolicy
 import tribixbite.cleverkeys.gif.GifGridManager
 import tribixbite.cleverkeys.gif.GifGroupButtonsBar
+import tribixbite.cleverkeys.voice.VoiceInputController
 
 /**
  * Handles keyboard events and state changes for CleverKeysService.
@@ -602,6 +603,24 @@ class KeyboardReceiver(
                     )
                 ) {
                     keyboard2.getConfig()?.shouldOfferVoiceTyping = false
+                }
+            }
+
+            // T4: built-in voice input — record → self-hosted whisper server.
+            // The controller is fully crash-isolated (toasts + no-op on every
+            // failure); nothing here can take the IME down. State changes are
+            // mirrored onto the live view for the space-bar recording badge.
+            KeyValue.Event.VOICE_RECORD -> {
+                val cfg = keyboard2.getConfig()
+                VoiceInputController.onRecordingStateChanged = { recording ->
+                    keyboardView.setVoiceRecording(recording)
+                }
+                VoiceInputController.toggle(
+                    keyboard2,
+                    cfg?.voice_input_enabled ?: false,
+                    cfg?.voice_server_url ?: "",
+                ) { text ->
+                    keyboard2.currentInputConnection?.commitText(text, 1)
                 }
             }
 

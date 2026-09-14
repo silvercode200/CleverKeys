@@ -37,6 +37,9 @@ class KeyValue private constructor(
         CAPS_LOCK,
         SWITCH_VOICE_TYPING,
         SWITCH_VOICE_TYPING_CHOOSER,
+        // T4: built-in voice input (record → self-hosted whisper server), NOT the
+        // legacy switch-to-another-voice-IME events above.
+        VOICE_RECORD,
         SWITCH_GIF,
         SWITCH_BACK_GIF,
     }
@@ -597,6 +600,8 @@ class KeyValue private constructor(
             "capslock" -> eventKey(0xE012, Event.CAPS_LOCK, 0)
             "voice_typing" -> eventKey(0xE015, Event.SWITCH_VOICE_TYPING, FLAG_SMALLER_FONT)
             "voice_typing_chooser" -> eventKey(0xE015, Event.SWITCH_VOICE_TYPING_CHOOSER, FLAG_SMALLER_FONT)
+            // T4: mic glyph reuses the same 0xE015 font slot as the legacy voice key.
+            "voice_record" -> eventKey(0xE015, Event.VOICE_RECORD, FLAG_SMALLER_FONT)
             "switch_gif" -> eventKey("GIF", Event.SWITCH_GIF, FLAG_SMALLER_FONT)
             "switch_back_gif" -> eventKey("ABC", Event.SWITCH_BACK_GIF, 0)
 

@@ -19,6 +19,7 @@
     <string name="key_descr_switch_backward">Переключить на предыдущую раскладку клавиатуры</string>
     <string name="key_descr_change_method">Переключение клавиатуры</string>
     <string name="key_descr_voice_typing">Голосовой ввод</string>
+    <string name="key_descr_voice_record">Голосовой ввод (запись и распознавание)</string>
     <string name="key_descr_copy">Копировать</string>
     <string name="key_descr_copy_private">Приватное копирование (только в CleverKeys, не в системный буфер обмена)</string>
     <string name="key_descr_paste">Вставить</string>
@@ -995,3 +996,19 @@
     <string name="privacy_delete_data_done">Все данные свайпов удалены</string>
     <string name="privacy_delete_data_error">Ошибка удаления данных: %1$s</string>
 </resources>
+
+    <!-- T4: Голосовой ввод (свой whisper-сервер) -->
+    <string name="settings_section_voice">🎤 Голосовой ввод</string>
+    <string name="voice_input_enabled_title">Голосовой ввод</string>
+    <string name="voice_input_enabled_desc" formatted="false">Кнопка микрофона в углу пробела: свайп к углу — начать запись, повторный свайп — вставить распознанный текст. Выключено по умолчанию; аудио уходит только на ваш сервер.</string>
+    <string name="voice_server_url_title">URL сервера</string>
+    <string name="voice_server_url_desc" formatted="false">Адрес whisper-сервера, например http://192.168.1.139:8090</string>
+    <string name="voice_error_no_server">Голосовой сервер не настроен</string>
+    <string name="voice_error_no_permission">Нет разрешения на микрофон</string>
+    <string name="voice_error_start">Не удалось начать запись</string>
+    <string name="voice_error_too_short">Слишком короткая запись</string>
+    <string name="voice_error_server">Сервер недоступен</string>
+    <string name="voice_error_empty_response">Речь не распознана</string>
+    <string name="voice_test_title">Проверить соединение</string>
+    <string name="voice_test_ok">Сервер ответил</string>
+    <string name="voice_test_fail">Сервер не отвечает</string>

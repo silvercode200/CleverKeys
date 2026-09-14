@@ -4,11 +4,16 @@
   <!-- Core keyboard permissions -->
   <uses-permission android:name="android.permission.VIBRATE"/>
 
-  <!-- PRIVACY: No INTERNET permission - CleverKeys is fully offline, no data leaves your device -->
+  <!-- PRIVACY (T4 voice input): the INTERNET permission is now required for the
+       OPTIONAL self-hosted voice input feature (record → user's own whisper.cpp
+       server). The feature is DISABLED BY DEFAULT; with the toggle off no
+       network code runs and no data leaves the device. Audio is only sent to
+       the server URL the user explicitly configures (e.g. a LAN address). -->
+  <uses-permission android:name="android.permission.INTERNET"/>
 
-  <!-- Optional: Voice input support (not required for core keyboard functionality) -->
-  <!-- Uncomment if you want voice typing: -->
-  <!-- <uses-permission android:name="android.permission.RECORD_AUDIO"/> -->
+  <!-- T4: voice input (runtime-requested only when the user enables the
+       feature in settings; the IME itself never requests it). -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
   <!-- User dictionary access for word suggestions (system dictionary only) -->
   <uses-permission android:name="android.permission.READ_USER_DICTIONARY"/>
