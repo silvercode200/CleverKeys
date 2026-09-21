@@ -357,6 +357,10 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
     internal var compactWidth by mutableIntStateOf(Defaults.COMPACT_WIDTH)
     internal var compactSideRight by mutableStateOf(Defaults.COMPACT_SIDE_RIGHT)
 
+    // Split mode (T6): two halves + pass-through center gap
+    internal var splitEnabled by mutableStateOf(Defaults.SPLIT_MODE)
+    internal var splitGap by mutableIntStateOf(Defaults.SPLIT_GAP)
+
     // Voice input (T4): feature toggle + self-hosted whisper server URL
     internal var voiceInputEnabled by mutableStateOf(Defaults.VOICE_INPUT_ENABLED)
     internal var voiceServerUrl by mutableStateOf(Defaults.VOICE_SERVER_URL)

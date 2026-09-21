@@ -241,6 +241,29 @@ object WindowLayoutUtils {
     }
 
     /**
+     * T6 split/compact XOR: the effective compact window-width percent, or
+     * `null` when the IME window must stay full-width.
+     *
+     * - split ON → `null`: the split window is full-width (the halves are
+     *   laid out inside it), and the compact prefs are deliberately inert.
+     * - split OFF + compact ON → the compact percent (clamped like
+     *   [computeCompactWidth], so the util is safe for any caller).
+     * - both OFF → `null` (the default full-width keyboard).
+     *
+     * Pure decision — the caller (CleverKeysService) feeds the result into
+     * [updateSoftInputWindowLayoutParams] unchanged.
+     */
+    @JvmStatic
+    fun effectiveCompactWidthPercent(
+        splitMode: Boolean,
+        compactMode: Boolean,
+        compactWidth: Int
+    ): Int? {
+        if (splitMode || !compactMode) return null
+        return compactWidth.coerceIn(50, 90)
+    }
+
+    /**
      * Updates soft input window layout parameters for IME.
      * Configures edge-to-edge display, window height, input area height, and gravity.
      *

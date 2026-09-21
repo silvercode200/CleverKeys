@@ -73,6 +73,10 @@ internal val SETTINGS_DEFAULTS: Map<String, PrefValue> = mapOf(
     "compact_width" to PrefValue.IntV(Defaults.COMPACT_WIDTH),
     "compact_side_right" to PrefValue.Bool(Defaults.COMPACT_SIDE_RIGHT),
 
+    // ── Split mode (T6) ───────────────────────────────────────────────
+    "split_mode" to PrefValue.Bool(Defaults.SPLIT_MODE),
+    "split_gap" to PrefValue.IntV(Defaults.SPLIT_GAP),
+
     // ── Voice input (T4) ──────────────────────────────────────────────
     "voice_input_enabled" to PrefValue.Bool(Defaults.VOICE_INPUT_ENABLED),
     "voice_server_url" to PrefValue.Str(Defaults.VOICE_SERVER_URL),

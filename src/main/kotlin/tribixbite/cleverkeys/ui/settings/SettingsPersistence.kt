@@ -90,6 +90,13 @@ internal fun SettingsActivity.handlePreferenceChanged(sharedPreferences: SharedP
             "compact_side_right" -> {
                 compactSideRight = prefs.getBoolean(key, Defaults.COMPACT_SIDE_RIGHT)
             }
+            // Split mode (T6): written by the Appearance section.
+            "split_mode" -> {
+                splitEnabled = prefs.getSafeBoolean(key, Defaults.SPLIT_MODE)
+            }
+            "split_gap" -> {
+                splitGap = prefs.getSafeInt(key, Defaults.SPLIT_GAP)
+            }
             // Voice input (T4): written by the Voice section.
             "voice_input_enabled" -> {
                 voiceInputEnabled = prefs.getSafeBoolean(key, Defaults.VOICE_INPUT_ENABLED)
@@ -248,6 +255,10 @@ internal fun SettingsActivity.loadCurrentSettings() {
         compactEnabled = prefs.getSafeBoolean("compact_mode", Defaults.COMPACT_MODE)
         compactWidth = prefs.getSafeInt("compact_width", Defaults.COMPACT_WIDTH)
         compactSideRight = prefs.getSafeBoolean("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
+
+        // Split mode (T6)
+        splitEnabled = prefs.getSafeBoolean("split_mode", Defaults.SPLIT_MODE)
+        splitGap = prefs.getSafeInt("split_gap", Defaults.SPLIT_GAP)
 
         // Voice input (T4)
         voiceInputEnabled = prefs.getSafeBoolean("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)

@@ -548,6 +548,10 @@
     <string name="appearance_compact_side_title">Anchor to Right Edge</string>
     <string name="appearance_compact_side_desc" formatted="false">Off = anchor to the left edge</string>
     <string name="compact_tile_label">Keyboard Compact</string>
+    <string name="appearance_split_mode_title">Split Mode</string>
+    <string name="appearance_split_mode_desc" formatted="false">Split the keyboard into two halves at the screen edges with a center gap — type with both thumbs. Taps in the gap reach the app. Overrides Compact Mode.</string>
+    <string name="appearance_split_gap_title">Split Gap</string>
+    <string name="appearance_split_gap_desc" formatted="false">Center gap width as % of screen width (10–40)</string>
     <string name="appearance_label_brightness_title">Label Brightness</string>
     <string name="appearance_label_brightness_desc" formatted="false">Brightness of key labels (0–100%)</string>
     <string name="appearance_keyboard_opacity_title">Keyboard Opacity</string>

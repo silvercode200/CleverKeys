@@ -180,6 +180,34 @@ internal fun SettingsActivity.AppearanceSection() {
                     )
                 }
 
+                // Split mode (T6): two halves at the screen edges with a center
+                // pass-through gap — thumb typing on tablets. Overrides
+                // compact while on (the window stays full-width).
+                SettingsSwitch(
+                    title = stringResource(R.string.appearance_split_mode_title),
+                    description = stringResource(R.string.appearance_split_mode_desc),
+                    checked = splitEnabled,
+                    onCheckedChange = {
+                        splitEnabled = it
+                        saveSetting("split_mode", it)
+                    }
+                )
+
+                if (splitEnabled) {
+                    SettingsSlider(
+                        title = stringResource(R.string.appearance_split_gap_title),
+                        description = stringResource(R.string.appearance_split_gap_desc),
+                        value = splitGap.toFloat(),
+                        valueRange = 10f..40f,
+                        steps = 30,
+                        onValueChange = {
+                            splitGap = it.toInt()
+                            saveSetting("split_gap", splitGap)
+                        },
+                        displayValue = "$splitGap%"
+                    )
+                }
+
                 SettingsSlider(
                     title = stringResource(R.string.appearance_label_brightness_title),
                     description = stringResource(R.string.appearance_label_brightness_desc),

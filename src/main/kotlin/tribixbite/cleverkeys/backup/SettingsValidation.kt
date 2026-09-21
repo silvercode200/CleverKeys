@@ -321,6 +321,10 @@ object SettingsValidation {
         // Compact mode width (T2)
         put("compact_width", 50..90)
 
+        // Split mode gap (T6): % of screen width, same bounds the slider
+        // offers and Config.refresh enforces at the read site.
+        put("split_gap", 10..40)
+
         // Legacy horizontal_margin (kept for backward compatibility, 0-200 dp)
         for (k in listOf(
             "horizontal_margin_portrait", "horizontal_margin_landscape",
@@ -486,6 +490,7 @@ object SettingsValidation {
         "margin_right_portrait", "margin_right_landscape",
         "margin_right_portrait_unfolded", "margin_right_landscape_unfolded",
         "compact_width",
+        "split_gap",
         "horizontal_margin_portrait", "horizontal_margin_landscape",
         "horizontal_margin_portrait_unfolded", "horizontal_margin_landscape_unfolded",
         "custom_border_radius",

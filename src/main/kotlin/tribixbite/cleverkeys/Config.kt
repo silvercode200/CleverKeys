@@ -69,6 +69,13 @@ object Defaults {
     const val COMPACT_WIDTH = 60
     const val COMPACT_SIDE_RIGHT = true
 
+    // Split mode (T6): two halves at the screen edges with a pass-through
+    // center gap (see SplitLayout / tablet/t6-split-design.md). split_gap is
+    // the gap's share of the screen width (10..40). Split overrides compact
+    // while on; compact prefs stay inert, no migration.
+    const val SPLIT_MODE = false
+    const val SPLIT_GAP = 20
+
     // Voice input (T4): self-hosted whisper.cpp server (see tablet/t4-voice-design.md).
     // DISABLED by default — the mic key is stripped from the layout until the user
     // turns the feature on and configures a server URL.
@@ -553,6 +560,11 @@ class Config private constructor(
     @JvmField var compact_mode = Defaults.COMPACT_MODE
     @JvmField var compact_width = Defaults.COMPACT_WIDTH
     @JvmField var compact_side_right = Defaults.COMPACT_SIDE_RIGHT
+    // Split mode (T6): not in ConfigSnapshot (like compact) — read at layout
+    // build time (current_layout) and insets time (onComputeInsets), not on
+    // the hot path.
+    @JvmField var split_mode = Defaults.SPLIT_MODE
+    @JvmField var split_gap = Defaults.SPLIT_GAP
     // Voice input (T4): read by LayoutModifier (key visibility) and
     // VoiceInputController (network target). Like compact_mode, not in
     // ConfigSnapshot — not a hot-path value.
@@ -852,6 +864,12 @@ class Config private constructor(
         compact_width = safeGetInt(_prefs, "compact_width", Defaults.COMPACT_WIDTH)
             .coerceIn(50, 90)
         compact_side_right = _prefs.getBoolean("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
+
+        // Split mode (T6): gap clamped to the pref bounds so a bad import can
+        // neither collapse the halves onto each other nor eat the keyboard.
+        split_mode = _prefs.getBoolean("split_mode", Defaults.SPLIT_MODE)
+        split_gap = safeGetInt(_prefs, "split_gap", Defaults.SPLIT_GAP)
+            .coerceIn(SplitLayout.GAP_MIN_PERCENT, SplitLayout.GAP_MAX_PERCENT)
 
         // Voice input (T4): empty URL = feature inert even if the flag flips.
         voice_input_enabled = _prefs.getBoolean("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)

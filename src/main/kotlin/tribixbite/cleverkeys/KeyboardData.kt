@@ -151,6 +151,25 @@ class KeyboardData private constructor(
         return KeyboardData(this, rows_)
     }
 
+    /**
+     * T6 split mode: insert a [gapUnits]-wide gap into every row at the key
+     * boundary nearest the row center (see [SplitLayout]). Wide keys covering
+     * the center (the bottom-row space bar) are cut into two same-content
+     * keys so both thumbs get space. The transformed rows total
+     * keysWidth + gapUnits, which makes the shared onMeasure key width push
+     * the halves to the window edges; the gap itself arrives as an extra
+     * shift on the first right-half key, so every shift-aware consumer
+     * handles it without changes.
+     *
+     * Rows are rebuilt through the private constructor, exactly like
+     * [mapKeys]/[insert_row] do. Returns null for a zero gap (identity —
+     * serve the original layout).
+     */
+    fun withSplitGap(gapUnits: Float): SplitLayout.SplitResult? {
+        val split = SplitLayout.splitRows(rows, keysWidth, gapUnits) ?: return null
+        return SplitLayout.SplitResult(KeyboardData(this, split.first), split.second)
+    }
+
     fun findKeyWithValue(kv: KeyValue): Key? {
         val pos = getKeys()[kv] ?: return null
         if (pos.row >= rows.size) return null

@@ -125,7 +125,9 @@ class SplitLayoutTest {
         // the left half), so the first shifted key is 'h'.
         val result = keyboardOf(listOf(homeRow()), U).withSplitGap(G)!!
         val row = result.layout.rows[0]
-        val shifted = row.keys.first { it.shift > 0f }
+        // 'a' carries its own natural 0.5 leading shift — the gap carrier is
+        // the key whose shift equals the inserted gap exactly.
+        val shifted = row.keys.first { kotlin.math.abs(it.shift - G) < 1e-4f }
         assertThat(shifted.keys[0]!!.getChar()).isEqualTo('h')
         assertThat(shifted.shift).isWithin(1e-4f).of(G)
         assertThat(result.info.maxLeftUnits).isWithin(1e-4f).of(5.5f)

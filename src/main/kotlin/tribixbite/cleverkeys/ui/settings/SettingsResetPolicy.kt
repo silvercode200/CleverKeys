@@ -91,6 +91,10 @@ object SettingsResetPolicy {
         put("compact_width", Defaults.COMPACT_WIDTH)
         put("compact_side_right", Defaults.COMPACT_SIDE_RIGHT)
 
+        // Split mode (T6)
+        put("split_mode", Defaults.SPLIT_MODE)
+        put("split_gap", Defaults.SPLIT_GAP)
+
         // Voice input (T4)
         put("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)
         put("voice_server_url", Defaults.VOICE_SERVER_URL)
