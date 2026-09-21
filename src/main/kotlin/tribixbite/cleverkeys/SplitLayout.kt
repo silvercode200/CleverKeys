@@ -1,5 +1,8 @@
 package tribixbite.cleverkeys
 
+import android.graphics.Rect
+import android.graphics.Region
+
 /**
  * T6 split-keyboard pure geometry (tablet/t6-split-design.md).
  *
@@ -9,8 +12,8 @@ package tribixbite.cleverkeys
  * (onDraw, onMeasure, hit-tests, swipe engines) then handles the halves
  * without code changes.
  *
- * This object holds the whole computation as pure JVM code (no android.*)
- * so it is unit-testable on the desktop:
+ * This object holds the whole computation as pure JVM code so it is
+ * unit-testable on the desktop:
  *
  *  - [gapUnits]: the gap in units for a `split_gap` percent of the screen,
  *    derived from G/(U+G) == p/100 so the transformed layout keeps the
@@ -18,6 +21,11 @@ package tribixbite.cleverkeys
  *  - [splitRow]/[splitRows]: the row transform (cut point + gap insertion).
  *  - [holeRectPx]: the guaranteed-keyless px band the service punches out
  *    of the window's touchable region.
+ *  - [touchableRegion]: the input-area-minus-hole region for the IME insets
+ *    (the one exception to "no android.*" — it consumes the android.graphics
+ *    Rect/Region data holders, which have functional test-source
+ *    replacements on the test classpath, the PointF pattern, so this stays
+ *    desktop-testable too).
  */
 object SplitLayout {
 
@@ -81,6 +89,29 @@ object SplitLayout {
         val right = marginLeftPx + (info.minLeftUnits + info.gapUnits) * keyWidthPx
         if (right - left <= 0f) return null
         return SplitHole(left, right)
+    }
+
+    /**
+     * The IME window's touchable region for split mode: the [inputArea] rect
+     * (window-frame coords) minus the [hole] rect (window-frame coords), so
+     * taps on the keyboard halves stay with the IME while taps in the center
+     * gap fall through to the app underneath.
+     *
+     * Extracted from `CleverKeysService.onComputeInsets` (TG-CKSPLIT-20260921):
+     * the service must not ASSIGN this to `Insets.touchableRegion` — that is a
+     * final field and ART kills the process with IllegalAccessError. It copies
+     * the returned region into the framework-preallocated one instead:
+     * `outInsets.touchableRegion.set(SplitLayout.touchableRegion(area, hole))`.
+     *
+     * The caller has already offset both rects into window coordinates; this
+     * function is pure rect arithmetic. A [hole] that only partially overlaps
+     * [inputArea] removes just the intersection (AOSP `Region.op(DIFFERENCE)`
+     * semantics); an empty or disjoint hole is a no-op.
+     */
+    fun touchableRegion(inputArea: Rect, hole: Rect): Region {
+        val region = Region(inputArea)
+        region.op(hole, Region.Op.DIFFERENCE)
+        return region
     }
 
     /** One transformed row + where its left half ends (units). */

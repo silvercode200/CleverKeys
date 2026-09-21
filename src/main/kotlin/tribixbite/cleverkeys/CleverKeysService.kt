@@ -8,7 +8,6 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.res.Resources
 import android.graphics.Rect
-import android.graphics.Region
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.IBinder
@@ -811,6 +810,11 @@ class CleverKeysService : InputMethodService(),
      * (the contract of [InputMethodService.Insets.touchableRegion]). Taps in
      * the hole fall through to the app under the keyboard.
      *
+     * The region is COPIED into the framework-preallocated
+     * [InputMethodService.Insets.touchableRegion] — a final field whose
+     * assignment ART rejects with IllegalAccessError (the tablet t6 crash);
+     * the rect arithmetic itself lives in [SplitLayout.touchableRegion].
+     *
      * Split off → super's insets untouched (T2 compact / full-width unchanged).
      * Timing guard: before the first layout pass the hole is null, so the
      * default region stays and the later requestApplyInsets (setInputView /
@@ -827,10 +831,11 @@ class CleverKeysService : InputMethodService(),
         if (inputArea.width <= 0 || inputArea.height <= 0) return
 
         // Region = input-area bounds (window coords) minus the hole rect,
-        // offset from view to window coordinates.
+        // offset from view to window coordinates. The rect arithmetic lives
+        // in SplitLayout.touchableRegion (pinned by SplitInsetsRegionTest).
         val areaLoc = IntArray(2)
         inputArea.getLocationInWindow(areaLoc)
-        val region = Region(
+        val inputAreaRect = Rect(
             areaLoc[0], areaLoc[1],
             areaLoc[0] + inputArea.width, areaLoc[1] + inputArea.height
         )
@@ -842,9 +847,13 @@ class CleverKeysService : InputMethodService(),
             (viewLoc[0] + holeView.right).toInt(),
             (viewLoc[1] + holeView.bottom).toInt()
         )
-        region.op(holeRect, Region.Op.DIFFERENCE)
         outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
-        outInsets.touchableRegion = region
+        // HOTFIX (2026-09-22, TG-CKSPLIT-20260921): touchableRegion is a FINAL
+        // field of InputMethodService.Insets — assigning it crashed the IME
+        // process on every split-mode keyboard show (IllegalAccessError,
+        // tablet t6-crash.txt). Copy into the framework-preallocated region
+        // instead; Region.set copies the content.
+        outInsets.touchableRegion.set(SplitLayout.touchableRegion(inputAreaRect, holeRect))
     }
 
     override fun updateFullscreenMode() {

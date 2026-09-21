@@ -1227,6 +1227,11 @@ tasks.register('runMockTests', JavaExec) {
     // constructor + the test-classpath PointF replacement.
     'tribixbite.cleverkeys.SplitLayoutTest',
     'tribixbite.cleverkeys.ProbabilisticKeyDetectorShiftTest',
+    // T6 split hotfix (2026-09-22, TG-CKSPLIT-20260921): the touchable-region
+    // geometry extracted from onComputeInsets after the final-field crash —
+    // area-minus-hole via Region.op(DIFFERENCE), pinned by the functional
+    // test-source Rect/Region replacements (the PointF pattern).
+    'tribixbite.cleverkeys.SplitInsetsRegionTest',
   ]
 
   mainClass = 'org.junit.runner.JUnitCore'
