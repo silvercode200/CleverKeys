@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import tribixbite.cleverkeys.KeyValue
 import tribixbite.cleverkeys.KeyboardData
+import tribixbite.cleverkeys.SplitLayout
 
 /**
  * Pure-JVM parity test for [KeyboardGeometry] — the shared hit-test geometry
@@ -161,6 +162,35 @@ class KeyboardGeometryTest {
         val hit = KeyboardGeometry.keyAt(gapRow, p, /*tx*/ 175f, topY)
         assertThat(hit).isNotNull()
         assertThat(hit!!.keys[0]!!.getChar()).isEqualTo('b')
+    }
+
+    // ── T6 split: hit-testing over split-transformed rows ────────────────────
+
+    @Test
+    fun splitTransformedRow_keyAtResolvesLeftHalfKey() {
+        val p = params(keyWidth = 100f, marginLeft = 50f)
+        // A qwerty top row through the real split transform (G=2.5): 5 keys
+        // [0..5u), 'y' shifted by the gap, 4 more keys after.
+        val topRow = row(*"qwertyuiop".map { charKey(it) }.toTypedArray())
+        val split = SplitLayout.splitRow(topRow, layoutWidthUnits = 10f, gapUnits = 2.5f)!!
+        val topY = 20f + 0.5f * p.rowHeight
+        // 't' cell: [450..550) — its center still resolves to 't' post-transform.
+        val hit = KeyboardGeometry.keyAt(listOf(split.row), p, /*tx*/ 500f, topY)
+        assertThat(hit).isNotNull()
+        assertThat(hit!!.keys[0]!!.getChar()).isEqualTo('t')
+    }
+
+    @Test
+    fun splitTransformedRow_tapInGapResolvesFirstRightKey() {
+        val p = params(keyWidth = 100f, marginLeft = 50f)
+        val topRow = row(*"qwertyuiop".map { charKey(it) }.toTypedArray())
+        val split = SplitLayout.splitRow(topRow, layoutWidthUnits = 10f, gapUnits = 2.5f)!!
+        val topY = 20f + 0.5f * p.rowHeight
+        // The gap band [550..800): a MOVE crossing the split gap is attributed
+        // to 'y' (the gap-slop rule) so swipe tracing stays continuous.
+        val hit = KeyboardGeometry.keyAt(listOf(split.row), p, /*tx*/ 600f, topY)
+        assertThat(hit).isNotNull()
+        assertThat(hit!!.keys[0]!!.getChar()).isEqualTo('y')
     }
 
     @Test

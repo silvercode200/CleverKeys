@@ -462,6 +462,47 @@ class WindowLayoutUtilsTest {
         verify(exactly = 0) { window.attributes = windowAttrs }
     }
 
+    // ── T6 split mode: the split/compact XOR gate ───────────────────────────
+    //
+    // effectiveCompactWidthPercent is the single decision for which window
+    // mode the IME uses: split ON forces a full-width window (compact prefs
+    // stay inert), compact alone narrows it, both off is the default.
+
+    @Test
+    fun `effectiveCompactWidthPercent_splitOverridesCompact`() {
+        // Split wins even with compact fully configured — the split window must
+        // stay full-width because the halves are laid out inside it.
+        assertThat(
+            WindowLayoutUtils.effectiveCompactWidthPercent(
+                splitMode = true, compactMode = true, compactWidth = 60
+            )
+        ).isNull()
+    }
+
+    @Test
+    fun `effectiveCompactWidthPercent_compactAlone`() {
+        assertThat(
+            WindowLayoutUtils.effectiveCompactWidthPercent(
+                splitMode = false, compactMode = true, compactWidth = 60
+            )
+        ).isEqualTo(60)
+        // A corrupted compact_width is clamped, never passed through raw.
+        assertThat(
+            WindowLayoutUtils.effectiveCompactWidthPercent(
+                splitMode = false, compactMode = true, compactWidth = 200
+            )
+        ).isEqualTo(90)
+    }
+
+    @Test
+    fun `effectiveCompactWidthPercent_bothOff`() {
+        assertThat(
+            WindowLayoutUtils.effectiveCompactWidthPercent(
+                splitMode = false, compactMode = false, compactWidth = 60
+            )
+        ).isNull()
+    }
+
     // =========================================================================
     // readSystemBarInsets — ONE shared API ladder for every inset read (#167 residual)
     // =========================================================================

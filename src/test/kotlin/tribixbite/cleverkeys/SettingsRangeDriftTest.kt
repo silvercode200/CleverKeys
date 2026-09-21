@@ -79,6 +79,22 @@ class SettingsRangeDriftTest {
         }
     }
 
+    // ── T6 split mode: the gap slider range 10..40 must survive import ──
+
+    @Test
+    fun splitGap_sliderBounds_importCleanly_andOutOfRange_isRejected() {
+        for (v in listOf(10, 20, 40)) {
+            assertWithMessage("split_gap=$v is UI-selectable (10..40) and must validate")
+                .that(SettingsValidation.validate("split_gap", PrefValue.IntV(v)))
+                .isNull()
+        }
+        for (v in listOf(9, 41, 0, 100)) {
+            assertWithMessage("split_gap=$v is outside 10..40 and must be rejected")
+                .that(SettingsValidation.validate("split_gap", PrefValue.IntV(v)))
+                .isNotNull()
+        }
+    }
+
     // ── G-5: the canonical STRING form of clipboard_history_limit must
     //         honor the same 0..500 bound the int form already enforces ──
 

@@ -170,6 +170,18 @@ class ConfigDefaultsTest {
         assertThat(Defaults.COMPACT_SIDE_RIGHT).isTrue()
     }
 
+    // ── Split mode (T6) ────────────────────────────────────────────────
+
+    @Test
+    fun `split mode default is off`() {
+        assertThat(Defaults.SPLIT_MODE).isFalse()
+    }
+
+    @Test
+    fun `split gap default is 20 percent`() {
+        assertThat(Defaults.SPLIT_GAP).isEqualTo(20)
+    }
+
     @Test
     fun `horizontal margin portrait default is 3`() {
         assertThat(Defaults.HORIZONTAL_MARGIN_PORTRAIT).isEqualTo(3)

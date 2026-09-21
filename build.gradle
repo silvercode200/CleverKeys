@@ -1220,6 +1220,13 @@ tasks.register('runMockTests', JavaExec) {
     // HighConfidence, keyboardSurface) persist, round-trip, and surface in Theme /
     // Theme.Computed paints and the SuggestionBar/Keyboard2View consumers.
     'tribixbite.cleverkeys.theme.ThemeCreatorFieldWiringTest',
+    // T6 split mode (2026-09-21, TG-CKSPLIT-20260921): the gap transform's pure
+    // geometry (cut point, wide-key split, hole intersection) and the detector's
+    // shift-accumulation regression (the right half resolved ~575px left of where
+    // it renders without it). Mock tier: real KeyboardData through the private
+    // constructor + the test-classpath PointF replacement.
+    'tribixbite.cleverkeys.SplitLayoutTest',
+    'tribixbite.cleverkeys.ProbabilisticKeyDetectorShiftTest',
   ]
 
   mainClass = 'org.junit.runner.JUnitCore'
