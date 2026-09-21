@@ -161,6 +161,17 @@ class Keyboard2View @JvmOverloads constructor(
 
     // Reused by onLayout for systemGestureExclusionRects (avoid layout-time allocation)
     private val _gestureExclusionRect = Rect()
+    // T6 split: second exclusion rect — the halves are two disjoint bands
+    // (left edge..hole, hole..right edge) so the back gesture stays usable
+    // through the center gap.
+    private val _gestureExclusionRect2 = Rect()
+
+    // T6 split: hole geometry for the layout this view is actually showing.
+    // _splitInfoLayout is the layout the info was computed FOR; setKeyboard
+    // clears the pair when a different layout arrives, so a stale hole can
+    // never cut touch out of live keys (see setSplitInfo/splitHoleRectPx).
+    private var _splitInfo: SplitLayout.SplitInfo? = null
+    private var _splitInfoLayout: KeyboardData? = null
 
     private var _keyWidth = 0f
     private var _mainLabelSize = 0f
@@ -443,7 +454,45 @@ class Keyboard2View @JvmOverloads constructor(
     /** Get the current keyboard layout data (#9: used for swipe support check). */
     fun getKeyboard(): KeyboardData? = _keyboard
 
+    /**
+     * T6 split: hole geometry for the layout this view is showing (pushed by
+     * CleverKeysService.applyLayoutToView right after setKeyboard), or null to
+     * clear it (split off / un-split layout). The info is bound to the layout
+     * object it was computed for; setKeyboard clears the pair when a different
+     * layout arrives — a layout-switch key that bypasses the service then
+     * degrades to a consistent un-split full-width touch region instead of a
+     * stale hole.
+     */
+    fun setSplitInfo(info: SplitLayout.SplitInfo?) {
+        _splitInfo = info
+        _splitInfoLayout = if (info == null) null else _keyboard
+        // The touchable region may have just gained/lost its hole.
+        requestApplyInsets()
+    }
+
+    /**
+     * T6 split: the touchable hole in VIEW coordinates (y spans the keyboard
+     * view — the suggestion bar above stays fully touchable), or null when
+     * there is nothing measurable: not split, the info went stale, or the view
+     * has not been measured yet ([_keyWidth] 0). Null = keep the default
+     * touchable region (the onComputeInsets guard).
+     */
+    fun splitHoleRectPx(): RectF? {
+        val info = _splitInfo ?: return null
+        val keyboard = _keyboard ?: return null
+        if (_splitInfoLayout !== keyboard || _keyWidth <= 0f) return null
+        val hole = SplitLayout.holeRectPx(info, _keyWidth, _marginLeft) ?: return null
+        return RectF(hole.leftPx, 0f, hole.rightPx, height.toFloat())
+    }
+
     fun setKeyboard(kw: KeyboardData) {
+        // T6 split: a different layout than the one the split info belongs to
+        // makes that info stale — drop it; the service re-pushes fresh info
+        // right after when it delivers a split layout.
+        if (_splitInfoLayout != null && _splitInfoLayout !== kw) {
+            _splitInfo = null
+            _splitInfoLayout = null
+        }
         _keyboard = kw
         rebuildKeyCodeLowerCache(kw)
         val shiftKv = KeyValue.getKeyByName("shift")
@@ -1508,15 +1557,40 @@ class Keyboard2View @JvmOverloads constructor(
         if (!changed)
             return
         if (VERSION.SDK_INT >= 29) {
-            // Disable the back-gesture on the keyboard area (reused Rect — onLayout
-            // is a layout op, lint DrawAllocation applies)
-            _gestureExclusionRect.set(
-                left + _marginLeft.toInt(),
-                top + _config.snapshot.marginTop.toInt(),
-                right - _marginRight.toInt(),
-                bottom - _marginBottom.toInt()
-            )
-            systemGestureExclusionRects = listOf(_gestureExclusionRect)
+            // T6 split: two exclusion rects (halves without the gap) so the
+            // back gesture stays usable THROUGH the center hole. Single rect
+            // when there is no measurable hole (not split / not measured) —
+            // the pre-T6 behavior. Rects are reused fields (onLayout is a
+            // layout op, lint DrawAllocation applies).
+            val hole = splitHoleRectPx()
+            val topEdge = top + _config.snapshot.marginTop.toInt()
+            val bottomEdge = bottom - _marginBottom.toInt()
+            if (hole != null && hole.width() > 0f) {
+                val leftEdge = left + _marginLeft.toInt()
+                val rightEdge = right - _marginRight.toInt()
+                val holeLeft = left + hole.left.toInt()
+                val holeRight = left + hole.right.toInt()
+                if (holeLeft > leftEdge && holeRight < rightEdge && holeLeft < holeRight) {
+                    _gestureExclusionRect.set(leftEdge, topEdge, holeLeft, bottomEdge)
+                    _gestureExclusionRect2.set(holeRight, topEdge, rightEdge, bottomEdge)
+                    systemGestureExclusionRects = listOf(_gestureExclusionRect, _gestureExclusionRect2)
+                } else {
+                    _gestureExclusionRect.set(
+                        leftEdge, topEdge, rightEdge, bottomEdge
+                    )
+                    systemGestureExclusionRects = listOf(_gestureExclusionRect)
+                }
+            } else {
+                // Disable the back-gesture on the keyboard area (reused Rect — onLayout
+                // is a layout op, lint DrawAllocation applies)
+                _gestureExclusionRect.set(
+                    left + _marginLeft.toInt(),
+                    top + _config.snapshot.marginTop.toInt(),
+                    right - _marginRight.toInt(),
+                    bottom - _marginBottom.toInt()
+                )
+                systemGestureExclusionRects = listOf(_gestureExclusionRect)
+            }
         }
 
         // Push current layout's key positions to the autocorrect adjacency

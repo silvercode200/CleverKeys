@@ -82,8 +82,15 @@ class ProbabilisticKeyDetector(
             val rowHeight = row.height * scaleY
 
             for (key in row.keys) {
+                // T6 split regression fix: shift is empty space to the LEFT of
+                // the key (the split gap arrives as a shift on the first
+                // right-half key; numpad rows use leading shifts too). Advance
+                // x by it BEFORE the width accumulation, or shifted keys
+                // resolve ~their un-shifted position (the whole right half
+                // ~575px off at the tablet's 20% gap).
+                x += key.shift * scaleX
                 val keyWidth = key.width * scaleX
-                
+
                 if (key == null || key.keys[0] == null) {
                     x += keyWidth
                     continue
@@ -150,8 +157,11 @@ class ProbabilisticKeyDetector(
             if (y >= currentY && y < currentY + rowHeight) {
                 var currentX = marginLeft
                 for (key in row.keys) {
+                    // Same shift fix as findNearbyKeys: the key's left edge sits
+                    // after its leading shift space.
+                    currentX += key.shift * scaleX
                     val keyWidth = key.width * scaleX
-                    
+
                     if (x >= currentX && x < currentX + keyWidth) {
                         return key
                     }

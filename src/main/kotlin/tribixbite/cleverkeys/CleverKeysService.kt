@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.res.Resources
+import android.graphics.Rect
+import android.graphics.Region
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.IBinder
@@ -81,6 +83,16 @@ class CleverKeysService : InputMethodService(),
     // Configuration management (v1.32.345: extracted to ConfigurationManager)
     private lateinit var _configManager: ConfigurationManager
     private var _config: Config? = null // Cached reference from _configManager, updated by ConfigChangeListener
+
+    // T6 split mode: identity-keyed cache of the gap transform (withSplitGap
+    // rebuilds rows; current_layout() runs on layout/theme/input switches —
+    // rare enough that a (layout, gap) pair cache suffices) plus the last
+    // applied split state for the live-flip guard in onConfigChanged.
+    private var _splitSrcLayout: KeyboardData? = null
+    private var _splitGapUnits = 0f
+    private var _splitResult: SplitLayout.SplitResult? = null
+    private var _splitAppliedMode = false
+    private var _splitAppliedGap = -1
 
     // Track the theme ID used to create the current keyboard view (for stale view detection)
     private var _currentViewThemeId: Int = 0
@@ -275,9 +287,38 @@ class CleverKeysService : InputMethodService(),
      * Layout currently visible.
      * (v1.32.363: Delegated to LayoutManager)
      * (v1.32.408: Delegated to LayoutBridge)
+     * (T6 split: when split_mode is on, the bridge layout is passed through
+     * [KeyboardData.withSplitGap] — the gap arrives as a shift on the first
+     * right-half key of each row, so every shift-aware consumer downstream
+     * needs no change. Result cached by (layout identity, gap).)
      */
     fun current_layout(): KeyboardData {
-        return _layoutBridge.getCurrentLayout()
+        val layout = _layoutBridge.getCurrentLayout()
+        val config = _config ?: return layout
+        if (!config.split_mode) return layout
+        val gap = SplitLayout.gapUnits(layout.keysWidth, config.split_gap)
+        if (_splitSrcLayout === layout && _splitGapUnits == gap)
+            return _splitResult?.layout ?: layout
+        val result = layout.withSplitGap(gap)
+        _splitSrcLayout = layout
+        _splitGapUnits = gap
+        _splitResult = result
+        return result?.layout ?: layout
+    }
+
+    /**
+     * T6 split: apply the current layout to the view together with its split
+     * geometry info. The view's touchable hole must track the layout it is
+     * actually showing — a stale hole would cut touch out of live keys or
+     * leave a dead strip where the gap used to be. Split off → null clears
+     * any previous hole.
+     */
+    private fun applyLayoutToView() {
+        if (!::_keyboardView.isInitialized) return
+        _keyboardView.setKeyboard(current_layout())
+        _keyboardView.setSplitInfo(
+            if (_config?.split_mode == true) _splitResult?.info else null
+        )
     }
 
     /**
@@ -590,6 +631,18 @@ class CleverKeysService : InputMethodService(),
         // whenever config changes; no-op when nothing changed (guarded inside
         // WindowLayoutUtils by width/gravity comparison).
         updateSoftInputWindowLayoutParams()
+
+        // T6 split mode: live flip of the gap without view recreation. Only
+        // re-apply the layout when the split-relevant config actually changed —
+        // setKeyboard resets modifiers, so doing it on every pref flip would
+        // clear a latched shift when the user tweaks an unrelated setting.
+        if (newConfig.split_mode != _splitAppliedMode ||
+            (newConfig.split_mode && newConfig.split_gap != _splitAppliedGap)) {
+            _splitAppliedMode = newConfig.split_mode
+            _splitAppliedGap = newConfig.split_gap
+            applyLayoutToView()
+            if (::_keyboardView.isInitialized) _keyboardView.requestApplyInsets()
+        }
     }
 
     /**
@@ -606,7 +659,8 @@ class CleverKeysService : InputMethodService(),
 
         // CRITICAL: Set the keyboard layout on the new view to enable swipe/touch handling
         // Without this, _keyboard is null and key positions aren't calculated
-        _keyboardView.setKeyboard(current_layout())
+        // (T6: applyLayoutToView also carries the split geometry to the fresh view.)
+        applyLayoutToView()
 
         // Re-initialize swipe typing components on the new view
         // Pass null for word predictor (re-wired by PredictionViewSetup on next input)
@@ -640,7 +694,7 @@ class CleverKeysService : InputMethodService(),
         if (_currentViewThemeId != latestThemeId && latestThemeId != 0) {
             _keyboardView = inflate_view(R.layout.keyboard) as Keyboard2View
             _emojiPane = null
-            _keyboardView.setKeyboard(current_layout())
+            applyLayoutToView()
             _keyboardView.setSwipeTypingComponents(null, this)
             setInputView(_keyboardView)
         } else if (_keyboardView.parent == null) {
@@ -673,7 +727,10 @@ class CleverKeysService : InputMethodService(),
             _layoutManager?.clearSpecialLayout()
         }
 
-        _keyboardView.setKeyboard(current_layout())
+        // T6: applyLayoutToView delivers the (split-transformed) layout and its
+        // hole geometry on every input start — also the recovery point after a
+        // bypassing setKeyboard (layout-switch keys) left the view un-split.
+        applyLayoutToView()
         // WP9 R-1 step 8: background-warm the geometric engine when this layout routes to it,
         // so the first non-QWERTY swipe avoids the synchronous template-index build. No-op
         // unless swipe typing is on AND swipe_engine_mode is hybrid/geometric.
@@ -746,6 +803,50 @@ class CleverKeysService : InputMethodService(),
         v.requestApplyInsets()
     }
 
+    /**
+     * T6 split mode: punch a touchable hole through the IME window. The window
+     * stays full-width; the keyboard view localizes the gap
+     * ([Keyboard2View.splitHoleRectPx], null while unmeasured) and the region
+     * is the whole input area MINUS that rect, in window-frame coordinates
+     * (the contract of [InputMethodService.Insets.touchableRegion]). Taps in
+     * the hole fall through to the app under the keyboard.
+     *
+     * Split off → super's insets untouched (T2 compact / full-width unchanged).
+     * Timing guard: before the first layout pass the hole is null, so the
+     * default region stays and the later requestApplyInsets (setInputView /
+     * setSplitInfo / onConfigChanged) recomputes with measured geometry.
+     */
+    override fun onComputeInsets(outInsets: InputMethodService.Insets) {
+        super.onComputeInsets(outInsets)
+        val config = _config
+        if (config == null || !config.split_mode) return
+        if (!::_keyboardView.isInitialized) return
+        val holeView = _keyboardView.splitHoleRectPx() ?: return
+        val window = window?.window ?: return
+        val inputArea = window.findViewById<View>(android.R.id.inputArea) ?: return
+        if (inputArea.width <= 0 || inputArea.height <= 0) return
+
+        // Region = input-area bounds (window coords) minus the hole rect,
+        // offset from view to window coordinates.
+        val areaLoc = IntArray(2)
+        inputArea.getLocationInWindow(areaLoc)
+        val region = Region(
+            areaLoc[0], areaLoc[1],
+            areaLoc[0] + inputArea.width, areaLoc[1] + inputArea.height
+        )
+        val viewLoc = IntArray(2)
+        _keyboardView.getLocationInWindow(viewLoc)
+        val holeRect = Rect(
+            (viewLoc[0] + holeView.left).toInt(),
+            (viewLoc[1] + holeView.top).toInt(),
+            (viewLoc[0] + holeView.right).toInt(),
+            (viewLoc[1] + holeView.bottom).toInt()
+        )
+        region.op(holeRect, Region.Op.DIFFERENCE)
+        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
+        outInsets.touchableRegion = region
+    }
+
     override fun updateFullscreenMode() {
         super.updateFullscreenMode()
         updateSoftInputWindowLayoutParams()
@@ -765,7 +866,13 @@ class CleverKeysService : InputMethodService(),
             window,
             inputArea,
             isFullscreenMode,
-            compactWidthPercent = if (config?.compact_mode == true) config.compact_width else null,
+            // T6 split/compact XOR: split ON forces a full-width window
+            // (the halves live inside it) and leaves compact prefs inert.
+            compactWidthPercent = WindowLayoutUtils.effectiveCompactWidthPercent(
+                splitMode = config?.split_mode == true,
+                compactMode = config?.compact_mode == true,
+                compactWidth = config?.compact_width ?: Defaults.COMPACT_WIDTH
+            ),
             compactSideRight = config?.compact_side_right ?: Defaults.COMPACT_SIDE_RIGHT,
             screenWidthPx = config?.screenWidthPixels ?: 0
         )
@@ -776,7 +883,9 @@ class CleverKeysService : InputMethodService(),
         // callback can return the old subtype, and tag-only matching aliases duplicate
         // languageTags (ar/ar_TN); either way the switch was invisible.
         refreshSubtypeImm(changedTo = subtype)
-        _keyboardView.setKeyboard(current_layout())
+        // T6: applyLayoutToView — the subtype's layout needs a fresh split
+        // transform (cut points differ per layout) and matching hole geometry.
+        applyLayoutToView()
         // REMOVED: Redundant layout update - now handled exclusively by PredictionViewSetup's GlobalLayoutListener
         // This eliminates double initialization and input lag on app switches
     }
