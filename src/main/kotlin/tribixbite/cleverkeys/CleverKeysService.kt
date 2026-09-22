@@ -87,11 +87,17 @@ class CleverKeysService : InputMethodService(),
     // rebuilds rows; current_layout() runs on layout/theme/input switches —
     // rare enough that a (layout, gap) pair cache suffices) plus the last
     // applied split state for the live-flip guard in onConfigChanged.
+    // T8 key spacing: the cache key grows to (layout identity, spacing, gap) —
+    // spacing runs BEFORE split, so a stale entry keyed without it could serve
+    // an unspaced split. _splitAppliedSpacing feeds the same guard; unlike
+    // split_gap it is NOT gated by split_mode (init −1 forces a first apply).
     private var _splitSrcLayout: KeyboardData? = null
     private var _splitGapUnits = 0f
+    private var _spacingUnits = 0f
     private var _splitResult: SplitLayout.SplitResult? = null
     private var _splitAppliedMode = false
     private var _splitAppliedGap = -1
+    private var _splitAppliedSpacing = -1
 
     // Track the theme ID used to create the current keyboard view (for stale view detection)
     private var _currentViewThemeId: Int = 0
@@ -290,19 +296,28 @@ class CleverKeysService : InputMethodService(),
      * [KeyboardData.withSplitGap] — the gap arrives as a shift on the first
      * right-half key of each row, so every shift-aware consumer downstream
      * needs no change. Result cached by (layout identity, gap).)
+     * (T8 spacing: when key_spacing > 0, the layout is first passed through
+     * [KeyboardData.withKeySpacing] — row totals are preserved, so keysWidth,
+     * the px unit and the edge-pinned keys are unchanged; split then composes
+     * on the spaced rows. Cache key (layout identity, spacing, gap).)
      */
     fun current_layout(): KeyboardData {
         val layout = _layoutBridge.getCurrentLayout()
         val config = _config ?: return layout
-        if (!config.split_mode) return layout
-        val gap = SplitLayout.gapUnits(layout.keysWidth, config.split_gap)
-        if (_splitSrcLayout === layout && _splitGapUnits == gap)
-            return _splitResult?.layout ?: layout
-        val result = layout.withSplitGap(gap)
+        // T8: spacing BEFORE split — the split boundary search and the hole
+        // geometry must see the transformed rows; keysWidth is invariant.
+        val g = config.key_spacing / 100f
+        val spaced = if (g > 0f) layout.withKeySpacing(g) ?: layout else layout
+        if (!config.split_mode) return spaced
+        val gap = SplitLayout.gapUnits(spaced.keysWidth, config.split_gap)
+        if (_splitSrcLayout === layout && _splitGapUnits == gap && _spacingUnits == g)
+            return _splitResult?.layout ?: spaced
+        val result = spaced.withSplitGap(gap)
         _splitSrcLayout = layout
         _splitGapUnits = gap
+        _spacingUnits = g
         _splitResult = result
-        return result?.layout ?: layout
+        return result?.layout ?: spaced
     }
 
     /**
@@ -635,10 +650,15 @@ class CleverKeysService : InputMethodService(),
         // re-apply the layout when the split-relevant config actually changed —
         // setKeyboard resets modifiers, so doing it on every pref flip would
         // clear a latched shift when the user tweaks an unrelated setting.
+        // T8: key_spacing joins the guard WITHOUT the split_mode gate — the
+        // spacing transform runs in every mode, and without it here the
+        // PreferenceUIUpdateHandler raw-layout delivery would win the slider.
         if (newConfig.split_mode != _splitAppliedMode ||
-            (newConfig.split_mode && newConfig.split_gap != _splitAppliedGap)) {
+            (newConfig.split_mode && newConfig.split_gap != _splitAppliedGap) ||
+            newConfig.key_spacing != _splitAppliedSpacing) {
             _splitAppliedMode = newConfig.split_mode
             _splitAppliedGap = newConfig.split_gap
+            _splitAppliedSpacing = newConfig.key_spacing
             applyLayoutToView()
             if (::_keyboardView.isInitialized) _keyboardView.requestApplyInsets()
         }
