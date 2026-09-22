@@ -325,6 +325,10 @@ object SettingsValidation {
         // offers and Config.refresh enforces at the read site.
         put("split_gap", 10..40)
 
+        // Inter-key spacing (T8): % of one key's width, same bounds the slider
+        // offers and Config.refresh enforces at the read site.
+        put("key_spacing", 0..25)
+
         // Legacy horizontal_margin (kept for backward compatibility, 0-200 dp)
         for (k in listOf(
             "horizontal_margin_portrait", "horizontal_margin_landscape",
@@ -491,6 +495,7 @@ object SettingsValidation {
         "margin_right_portrait_unfolded", "margin_right_landscape_unfolded",
         "compact_width",
         "split_gap",
+        "key_spacing",
         "horizontal_margin_portrait", "horizontal_margin_landscape",
         "horizontal_margin_portrait_unfolded", "horizontal_margin_landscape_unfolded",
         "custom_border_radius",

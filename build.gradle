@@ -1232,6 +1232,13 @@ tasks.register('runMockTests', JavaExec) {
     // area-minus-hole via Region.op(DIFFERENCE), pinned by the functional
     // test-source Rect/Region replacements (the PointF pattern).
     'tribixbite.cleverkeys.SplitInsetsRegionTest',
+    // T8 inter-key spacing (2026-09-22, TG-CKTUNE-20260922): the spacing
+    // transform's unit-space arithmetic — row totals preserved (keysWidth /
+    // _keyWidth / window edges untouched), the first-key shift survives the
+    // numpad pattern, degenerate rows clamp to 0.1, and the spacing→split
+    // composition totals U+G. Same tier as SplitLayoutTest (real KeyboardData
+    // built through the private constructor).
+    'tribixbite.cleverkeys.KeySpacingTest',
   ]
 
   mainClass = 'org.junit.runner.JUnitCore'

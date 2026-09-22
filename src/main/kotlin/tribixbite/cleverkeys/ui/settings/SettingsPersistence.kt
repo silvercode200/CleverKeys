@@ -97,6 +97,10 @@ internal fun SettingsActivity.handlePreferenceChanged(sharedPreferences: SharedP
             "split_gap" -> {
                 splitGap = prefs.getSafeInt(key, Defaults.SPLIT_GAP)
             }
+            // Inter-key spacing (T8): written by the Appearance section.
+            "key_spacing" -> {
+                keySpacing = prefs.getSafeInt(key, Defaults.KEY_SPACING)
+            }
             // Voice input (T4): written by the Voice section.
             "voice_input_enabled" -> {
                 voiceInputEnabled = prefs.getSafeBoolean(key, Defaults.VOICE_INPUT_ENABLED)
@@ -259,6 +263,9 @@ internal fun SettingsActivity.loadCurrentSettings() {
         // Split mode (T6)
         splitEnabled = prefs.getSafeBoolean("split_mode", Defaults.SPLIT_MODE)
         splitGap = prefs.getSafeInt("split_gap", Defaults.SPLIT_GAP)
+
+        // Inter-key spacing (T8)
+        keySpacing = prefs.getSafeInt("key_spacing", Defaults.KEY_SPACING)
 
         // Voice input (T4)
         voiceInputEnabled = prefs.getSafeBoolean("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)

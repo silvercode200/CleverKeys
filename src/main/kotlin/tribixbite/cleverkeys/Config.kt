@@ -76,6 +76,14 @@ object Defaults {
     const val SPLIT_MODE = false
     const val SPLIT_GAP = 20
 
+    // Inter-key spacing (T8): the `key_spacing` pref widens the gap BETWEEN
+    // adjacent keys (% of a 1-unit key's width, 0..25) via
+    // KeyboardData.withKeySpacing, redistributing row units so each row's
+    // total — and the keyboard's glued-to-the-edge position — never change.
+    // Unlike key_horizontal_margin it does not inset the outer keys.
+    // 0 = identity (the transformation is skipped entirely).
+    const val KEY_SPACING = 0
+
     // Voice input (T4): self-hosted whisper.cpp server (see tablet/t4-voice-design.md).
     // DISABLED by default — the mic key is stripped from the layout until the user
     // turns the feature on and configures a server URL.
@@ -565,6 +573,9 @@ class Config private constructor(
     // the hot path.
     @JvmField var split_mode = Defaults.SPLIT_MODE
     @JvmField var split_gap = Defaults.SPLIT_GAP
+    // Inter-key spacing (T8): like split_*, not in ConfigSnapshot — read at
+    // layout build time (current_layout), not on the hot path.
+    @JvmField var key_spacing = Defaults.KEY_SPACING
     // Voice input (T4): read by LayoutModifier (key visibility) and
     // VoiceInputController (network target). Like compact_mode, not in
     // ConfigSnapshot — not a hot-path value.
@@ -870,6 +881,12 @@ class Config private constructor(
         split_mode = _prefs.getBoolean("split_mode", Defaults.SPLIT_MODE)
         split_gap = safeGetInt(_prefs, "split_gap", Defaults.SPLIT_GAP)
             .coerceIn(SplitLayout.GAP_MIN_PERCENT, SplitLayout.GAP_MAX_PERCENT)
+
+        // Inter-key spacing (T8): clamped to the slider/import bounds so a bad
+        // imported value can neither shrink keys to unreadable nor exceed the
+        // transformation's designed ceiling.
+        key_spacing = safeGetInt(_prefs, "key_spacing", Defaults.KEY_SPACING)
+            .coerceIn(0, 25)
 
         // Voice input (T4): empty URL = feature inert even if the flag flips.
         voice_input_enabled = _prefs.getBoolean("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)

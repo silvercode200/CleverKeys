@@ -361,6 +361,11 @@ class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferen
     internal var splitEnabled by mutableStateOf(Defaults.SPLIT_MODE)
     internal var splitGap by mutableIntStateOf(Defaults.SPLIT_GAP)
 
+    // Inter-key spacing (T8): backs the `key_spacing` pref (Appearance
+    // slider) — gap between adjacent keys without insetting the keyboard's
+    // outer edges (see tablet/t8-tune-design.md).
+    internal var keySpacing by mutableIntStateOf(Defaults.KEY_SPACING)
+
     // Voice input (T4): feature toggle + self-hosted whisper server URL
     internal var voiceInputEnabled by mutableStateOf(Defaults.VOICE_INPUT_ENABLED)
     internal var voiceServerUrl by mutableStateOf(Defaults.VOICE_SERVER_URL)

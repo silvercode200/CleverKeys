@@ -317,6 +317,24 @@ internal fun SettingsActivity.AppearanceSection() {
                     displayValue = "${keyHorizontalMargin / 100f}%"
                 )
 
+                // T8: inter-key spacing. Unlike key_horizontal_margin above (which
+                // insets the outer keys too), this widens the gap BETWEEN adjacent
+                // keys while the row's total width — and therefore the keyboard's
+                // glued-to-the-edge position — stays unchanged. Always visible:
+                // orthogonal to split/compact, composes with both.
+                SettingsSlider(
+                    title = stringResource(R.string.appearance_key_spacing_title),
+                    description = stringResource(R.string.appearance_key_spacing_desc),
+                    value = keySpacing.toFloat(),
+                    valueRange = 0f..25f,
+                    steps = 24,
+                    onValueChange = {
+                        keySpacing = it.toInt()
+                        saveSetting("key_spacing", keySpacing)
+                    },
+                    displayValue = "$keySpacing%"
+                )
+
                 SettingsSwitch(
                     title = stringResource(R.string.appearance_custom_border_title),
                     description = stringResource(R.string.appearance_custom_border_desc),

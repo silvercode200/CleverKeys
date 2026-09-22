@@ -170,6 +170,53 @@ class KeyboardData private constructor(
         return SplitLayout.SplitResult(KeyboardData(this, split.first), split.second)
     }
 
+    /**
+     * T8 key spacing: redistribute [gapUnits] of empty space BETWEEN the keys
+     * of every row without changing the row totals. Every key except the
+     * first gets `withShift(shift + gapUnits)`; all widths are scaled by
+     * `s = 1 − (n−1)·g/W_row` (W_row = Σ key widths of the row, n = number of
+     * keys, s clamped to 0.1) so the width removed equals the shift added:
+     * the new row total is s·W_row + S_row + (n−1)·g = W_row + S_row. The
+     * first key keeps its shift (the numpad leading-shift pattern), so the
+     * row start — the window-edge-pinned left key — does not move.
+     *
+     * Because every row total is preserved, [keysWidth] and the shared
+     * `_keyWidth` computed from it stay the same, the keyboard edges stay
+     * glued to the window and the T6 split gap/hole still compose on top
+     * (spacing first, then [withSplitGap]) with no consumer changes — the
+     * spacing arrives purely as per-key shift/width units, which every
+     * shift-aware consumer already honors.
+     *
+     * Rows are rebuilt through the private constructor, exactly like
+     * [mapKeys]/[insert_row] do. Returns null for a zero or negative gap
+     * (identity — serve the original layout).
+     */
+    fun withKeySpacing(gapUnits: Float): KeyboardData? {
+        if (gapUnits <= 0f) return null
+        val rows_ = rows.map { with_row_spacing(it, gapUnits) }
+        return KeyboardData(this, rows_)
+    }
+
+    /** The spacing transform for one row, see [withKeySpacing]. Rows with
+        fewer than two keys are returned unchanged (nothing to space). */
+    private fun with_row_spacing(row: Row, gapUnits: Float): Row {
+        val keys = row.keys
+        val n = keys.size
+        if (n <= 1) return row
+        var w_row = 0f
+        for (k in keys) w_row += k.width
+        // NaN-safe by construction: n > 1 and gapUnits > 0 make the numerator
+        // positive; a degenerate W_row = 0 gives -Infinity, which clamps to 0.1.
+        val s = maxOf(1f - (n - 1) * gapUnits / w_row, 0.1f)
+        val keys_ = ArrayList<Key>(n)
+        for (i in keys.indices) {
+            var k = keys[i].scaleWidth(s)
+            if (i > 0) k = k.withShift(k.shift + gapUnits)
+            keys_.add(k)
+        }
+        return Row(keys_, row.height, row.shift)
+    }
+
     fun findKeyWithValue(kv: KeyValue): Key? {
         val pos = getKeys()[kv] ?: return null
         if (pos.row >= rows.size) return null

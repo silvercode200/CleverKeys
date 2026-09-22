@@ -182,6 +182,14 @@ class ConfigDefaultsTest {
         assertThat(Defaults.SPLIT_GAP).isEqualTo(20)
     }
 
+    // ── Inter-key spacing (T8): the `key_spacing` pref defaults to strict
+    //    identity — at 0 the withKeySpacing transformation never runs. ────
+
+    @Test
+    fun keySpacing_defaults_to_zero() {
+        assertThat(Defaults.KEY_SPACING).isEqualTo(0)
+    }
+
     @Test
     fun `horizontal margin portrait default is 3`() {
         assertThat(Defaults.HORIZONTAL_MARGIN_PORTRAIT).isEqualTo(3)

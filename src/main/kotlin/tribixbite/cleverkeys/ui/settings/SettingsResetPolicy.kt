@@ -95,6 +95,9 @@ object SettingsResetPolicy {
         put("split_mode", Defaults.SPLIT_MODE)
         put("split_gap", Defaults.SPLIT_GAP)
 
+        // Inter-key spacing (T8)
+        put("key_spacing", Defaults.KEY_SPACING)
+
         // Voice input (T4)
         put("voice_input_enabled", Defaults.VOICE_INPUT_ENABLED)
         put("voice_server_url", Defaults.VOICE_SERVER_URL)

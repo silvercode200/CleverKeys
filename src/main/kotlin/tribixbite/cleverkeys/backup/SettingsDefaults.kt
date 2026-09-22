@@ -77,6 +77,9 @@ internal val SETTINGS_DEFAULTS: Map<String, PrefValue> = mapOf(
     "split_mode" to PrefValue.Bool(Defaults.SPLIT_MODE),
     "split_gap" to PrefValue.IntV(Defaults.SPLIT_GAP),
 
+    // ── Inter-key spacing (T8) ────────────────────────────────────────
+    "key_spacing" to PrefValue.IntV(Defaults.KEY_SPACING),
+
     // ── Voice input (T4) ──────────────────────────────────────────────
     "voice_input_enabled" to PrefValue.Bool(Defaults.VOICE_INPUT_ENABLED),
     "voice_server_url" to PrefValue.Str(Defaults.VOICE_SERVER_URL),

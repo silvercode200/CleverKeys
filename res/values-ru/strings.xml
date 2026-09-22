@@ -373,6 +373,8 @@
     <string name="appearance_key_vertical_margin_desc">Вертикальный интервал между клавишами</string>
     <string name="appearance_key_horizontal_margin_title">Горизонтальный отступ клавиш</string>
     <string name="appearance_key_horizontal_margin_desc">Горизонтальный интервал между клавишами</string>
+    <string name="appearance_key_spacing_title">Межклавишный зазор</string>
+    <string name="appearance_key_spacing_desc">Расстояние между клавишами, % от ширины клавиши (0–25). Края клавиатуры не отступают</string>
     <string name="appearance_custom_border_title">Настраиваемая рамка</string>
     <string name="appearance_custom_border_desc">Включить пользовательский стиль рамки клавиш</string>
     <string name="appearance_border_radius_title">Радиус скругления рамки</string>

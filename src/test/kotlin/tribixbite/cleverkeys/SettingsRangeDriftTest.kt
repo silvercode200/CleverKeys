@@ -95,6 +95,22 @@ class SettingsRangeDriftTest {
         }
     }
 
+    // ── T8 inter-key spacing: the slider range 0..25 must survive import ──
+
+    @Test
+    fun keySpacing_sliderBounds_importCleanly_andOutOfRange_isRejected() {
+        for (v in listOf(0, 25)) {
+            assertWithMessage("key_spacing=$v is UI-selectable (0..25) and must validate")
+                .that(SettingsValidation.validate("key_spacing", PrefValue.IntV(v)))
+                .isNull()
+        }
+        for (v in listOf(-1, 26)) {
+            assertWithMessage("key_spacing=$v is outside 0..25 and must be rejected")
+                .that(SettingsValidation.validate("key_spacing", PrefValue.IntV(v)))
+                .isNotNull()
+        }
+    }
+
     // ── G-5: the canonical STRING form of clipboard_history_limit must
     //         honor the same 0..500 bound the int form already enforces ──
 
