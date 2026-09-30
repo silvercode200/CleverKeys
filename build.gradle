@@ -1060,6 +1060,9 @@ tasks.register('runMockTests', JavaExec) {
     // the default at every fuzzed direction bin; cold-load independence from swipe typing;
     // the short/long boundary is authoritative (BY-DESIGN pin for #83).
     'tribixbite.cleverkeys.PointersShortSwipeCustomOverrideTest',
+    // TG-TZKEYS-20260930 A1: short tap on Fn emits switch_forward (layout cycle, no
+    // system picker); long press keeps the lockPointer path; Ctrl latch untouched.
+    'tribixbite.cleverkeys.PointersFnTapToggleTest',
     'tribixbite.cleverkeys.ReleaseClaimKeyModifierTest',
     'tribixbite.cleverkeys.WindowLayoutUtilsTest',
     'tribixbite.cleverkeys.MarginPercentPolicyTest',

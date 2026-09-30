@@ -670,6 +670,23 @@ class Pointers(
             }
         } else if ((ptr.flags and FLAG_P_LATCHABLE) != 0) {
             if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Pointers", "Path: Latchable key - will latch")
+            // TG-TZKEYS-20260930 A1: a plain short tap on the Fn modifier toggles the text
+            // layout (switch_forward → LayoutManager.incrTextLayout, no system IME picker)
+            // instead of latching the modifier. A long press still locks Fn: a LOCKED
+            // pointer skips this interception and latches as before. Resolved at the call
+            // site (not a class field) so Unsafe-allocated test instances stay valid.
+            val tapped = ptr.value
+            if (tapped != null && (ptr.flags and FLAG_P_LOCKED) == 0 &&
+                tapped.getKind() == KeyValue.Kind.Modifier &&
+                tapped.getModifier() == KeyValue.Modifier.FN
+            ) {
+                removePtr(ptr)
+                val switchKey = KeyValue.getKeyByName("switch_forward")
+                _handler.onPointerDown(switchKey, false)
+                _handler.onPointerUp(switchKey, ptr.modifiers)
+                _handler.onPointerFlagsChanged(null)
+                return
+            }
             // Latchable but non-special keys must clear latched.
             if ((ptr.flags and FLAG_P_CLEAR_LATCHED) != 0) {
                 clearLatched()
