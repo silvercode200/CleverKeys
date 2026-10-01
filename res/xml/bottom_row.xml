@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <row height="0.95">
-  <key width="1.7" key0="ctrl" key1="loc switch_greekmath" key2="loc meta" key3="loc switch_clipboard" key4="switch_numeric" key7="switch_back_clipboard"/>
+  <!-- Ctrl: swipe N = "/" (slash, plain char key). switch_back_clipboard relocated
+       N(key7)→S(key8) — TG-TZKEYS-20260930 A3. -->
+  <key width="1.7" key0="ctrl" key1="loc switch_greekmath" key2="loc meta" key3="loc switch_clipboard" key4="switch_numeric" key7="/" key8="switch_back_clipboard"/>
   <key width="1.1" key0="fn" key1="loc alt" key2="loc change_method" key3="switch_emoji" key4="config" key7="switch_gif"/>
   <!-- #169: switch_forward/switch_backward are `loc` so the extra-keys checkboxes govern
        them (defaultChecked=true keeps them visible for multi-layout users by default;
