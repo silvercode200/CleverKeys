@@ -91,9 +91,11 @@ public class KeyEvent {
     public static final int KEYCODE_F = 34;
     public static final int KEYCODE_O = 43;
     public static final int KEYCODE_TAB = 61;
+    public static final int KEYCODE_W = 51;
     public static final int KEYCODE_Z = 54;
     public static final int META_ALT_ON = 2;
     public static final int META_CTRL_ON = 4096;
+    public static final int META_CTRL_LEFT_ON = 8192;
     public static final int META_SHIFT_ON = 1;
 
     /** Mirrors {@code android.view.KeyEvent.Callback}: framework supertype of {@code View}

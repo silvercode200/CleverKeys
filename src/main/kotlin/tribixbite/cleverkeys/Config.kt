@@ -1367,6 +1367,13 @@ class Config private constructor(
         fun key_down(key: KeyValue?, isSwipe: Boolean)
         fun key_up(key: KeyValue?, mods: Pointers.Modifiers, isKeyRepeat: Boolean = false)
         fun mods_changed(mods: Pointers.Modifiers)
+
+        /**
+         * TG-TZKEYS-20260930 A4: a held backspace crossed the 3 s word-delete deadline —
+         * delete one whole word behind the cursor (terminal: Ctrl+W; normal field:
+         * deleteSurroundingText — the gate lives in SuggestionHandler.handleDeleteLastWord).
+         */
+        fun delete_last_word() {}
     }
 
     /**

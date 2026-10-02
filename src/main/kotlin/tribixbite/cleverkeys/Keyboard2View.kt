@@ -645,6 +645,12 @@ class Keyboard2View @JvmOverloads constructor(
         updateFlags()
     }
 
+    override fun onPointerHoldWordDelete(mods: Pointers.Modifiers) {
+        // TG-TZKEYS-20260930 A4: held-backspace word deletion — no key_up (the
+        // terminal/normal gate runs in SuggestionHandler.handleDeleteLastWord).
+        _config.handler?.delete_last_word()
+    }
+
     override fun onPointerFlagsChanged(hapticEvent: HapticEvent?) {
         updateFlags()
         invalidate()

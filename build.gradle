@@ -1071,6 +1071,10 @@ tasks.register('runMockTests', JavaExec) {
     // KeyEvent stub (src/test/kotlin/android/view/KeyEvent.kt, the PointF pattern).
     'tribixbite.cleverkeys.PointersTermuxLongPressTest',
     'tribixbite.cleverkeys.KeyEventHandlerLongPressActionTest',
+    // TG-TZKEYS-20260930 A4: backspace hold — char repeat for 3 s, then whole-word
+    // deletion until release; plus the delete-last-word routing and the terminal
+    // (Ctrl+W) vs normal-field (deleteSurroundingText) gate in SuggestionHandler.
+    'tribixbite.cleverkeys.PointersBackspaceWordDeleteTest',
     'tribixbite.cleverkeys.ReleaseClaimKeyModifierTest',
     'tribixbite.cleverkeys.WindowLayoutUtilsTest',
     'tribixbite.cleverkeys.MarginPercentPolicyTest',

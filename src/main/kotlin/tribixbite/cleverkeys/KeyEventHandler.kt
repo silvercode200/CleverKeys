@@ -150,6 +150,15 @@ class KeyEventHandler(
         updateMetaState(mods)
     }
 
+    /**
+     * TG-TZKEYS-20260930 A4: whole-word deletion for a held backspace — forwarded to the
+     * service, whose suggestion bridge runs the terminal (Ctrl+W) / normal-field
+     * (deleteSurroundingText) gate in SuggestionHandler.handleDeleteLastWord.
+     */
+    override fun delete_last_word() {
+        recv.handle_delete_last_word()
+    }
+
     override fun paste_from_clipboard_pane(content: String) {
         // Exit clipboard search mode before pasting to target field
         // Otherwise send_text routes to search box instead of target

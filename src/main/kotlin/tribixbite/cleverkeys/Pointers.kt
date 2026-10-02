@@ -1526,12 +1526,37 @@ class Pointers(
                 ptr.flags = ptr.flags and FLAG_P_DEFERRED_DOWN.inv()  // Clear deferred flag
                 _handler.onPointerDown(kv, false)  // Output initial character
             }
-            _handler.onPointerHold(kv, ptr.modifiers)
+            // TG-TZKEYS-20260930 A4: a held backspace starts on per-character deletion;
+            // after BACKSPACE_WORD_DELETE_DELAY_MS of holding, the repeat source switches
+            // to whole-word deletion (terminal gate — Ctrl+W vs deleteSurroundingText —
+            // lives downstream in SuggestionHandler.handleDeleteLastWord) until release.
+            // The deadline is armed on the first repeat fire and lives on the pointer,
+            // so a release resets it. Not a backspace key → the word branch never arms.
+            if (isBackspaceKey(kv) && backspaceHoldReachedWordDeadline(ptr)) {
+                _handler.onPointerHoldWordDelete(ptr.modifiers)
+            } else {
+                _handler.onPointerHold(kv, ptr.modifiers)
+            }
             _longpress_handler.sendEmptyMessageDelayed(
                 ptr.timeoutWhat,
                 snap.longPressInterval.toLong()
             )
         }
+    }
+
+    /**
+     * TG-TZKEYS-20260930 A4: has the held backspace crossed the word-delete deadline?
+     * The first call arms the deadline ([Pointer.wordDeleteDeadlineMs] was 0) and stays
+     * in char mode; later calls compare the wall clock against it. Stickiness is free —
+     * once the clock passes the deadline it stays past until the pointer dies.
+     */
+    private fun backspaceHoldReachedWordDeadline(ptr: Pointer): Boolean {
+        val now = System.currentTimeMillis()
+        if (ptr.wordDeleteDeadlineMs == 0L) {
+            ptr.wordDeleteDeadlineMs = now + BACKSPACE_WORD_DELETE_DELAY_MS
+            return false
+        }
+        return now >= ptr.wordDeleteDeadlineMs
     }
 
     /**
@@ -1737,6 +1762,14 @@ class Pointers(
 
         /** Timeout identifier for selection-delete repeat messages. */
         var selectionDeleteWhat: Int = -1
+
+        /**
+         * TG-TZKEYS-20260930 A4: wall-clock deadline (from the first repeat fire) at
+         * which a held backspace switches from per-character to whole-word deletion.
+         * [0] means "not armed yet". Lives on the pointer, so a release naturally
+         * resets it.
+         */
+        var wordDeleteDeadlineMs: Long = 0L
 
         /** [null] when not in sliding mode. */
         var sliding: Sliding? = null
@@ -1970,6 +2003,13 @@ class Pointers(
         /** Key is repeating. */
         fun onPointerHold(k: KeyValue, mods: Modifiers)
 
+        /**
+         * TG-TZKEYS-20260930 A4: a held backspace past [BACKSPACE_WORD_DELETE_DELAY_MS]
+         * repeats whole-word deletion instead of the per-character [onPointerHold].
+         * Fired on every repeat tick while the word mode is active (until release).
+         */
+        fun onPointerHoldWordDelete(mods: Modifiers) {}
+
         /** Track swipe movement for swipe typing. */
         fun onSwipeMove(x: Float, y: Float, recognizer: ImprovedSwipeGestureRecognizer)
 
@@ -2048,6 +2088,13 @@ class Pointers(
 
         /** Minimum repeat delay (ms) when finger at edge of key (fastest movement). */
         const val TRACKPOINT_MIN_DELAY = 30L
+
+        /**
+         * TG-TZKEYS-20260930 A4: how long a backspace must be held (from its first
+         * repeat fire) before the keyrepeat switches from per-character deletion to
+         * whole-word deletion.
+         */
+        const val BACKSPACE_WORD_DELETE_DELAY_MS = 3000L
 
         /** Maximum repeat delay (ms) when finger just outside dead zone (slowest movement). */
         const val TRACKPOINT_MAX_DELAY = 200L
