@@ -75,6 +75,13 @@ class KeyEventReceiverBridge(
         return keyboard2.currentInputEditorInfo
     }
 
+    // TG-TZKEYS-20260930 A2: long Tab → hide the keyboard (HIDE_KEYBOARD). The bridge
+    // forwards to the owning service, which maps this to InputMethodService
+    // requestHideSelf(0) — no key events involved.
+    override fun hideKeyboard() {
+        keyboard2.hideKeyboard()
+    }
+
     override fun getContext(): Context {
         return keyboard2
     }

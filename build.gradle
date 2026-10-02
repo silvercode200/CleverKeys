@@ -1063,6 +1063,14 @@ tasks.register('runMockTests', JavaExec) {
     // TG-TZKEYS-20260930 A1: short tap on Fn emits switch_forward (layout cycle, no
     // system picker); long press keeps the lockPointer path; Ctrl latch untouched.
     'tribixbite.cleverkeys.PointersFnTapToggleTest',
+    // TG-TZKEYS-20260930 A2: Termux-row long presses — Pointers routes the mapped
+    // LongPressAction through the handler (Alt→SEND_ENTER, Ctrl→TOGGLE_FULLSCREEN,
+    // arrows→ALT_*, Esc→DETACH, Tab→HIDE_KEYBOARD; a declined action keeps the stock
+    // lock path), and KeyEventHandler executes them with the terminal-app gate. The
+    // execution side is assertable because the test classpath shadows the android.jar
+    // KeyEvent stub (src/test/kotlin/android/view/KeyEvent.kt, the PointF pattern).
+    'tribixbite.cleverkeys.PointersTermuxLongPressTest',
+    'tribixbite.cleverkeys.KeyEventHandlerLongPressActionTest',
     'tribixbite.cleverkeys.ReleaseClaimKeyModifierTest',
     'tribixbite.cleverkeys.WindowLayoutUtilsTest',
     'tribixbite.cleverkeys.MarginPercentPolicyTest',
@@ -1257,11 +1265,19 @@ tasks.register('runMockTests', JavaExec) {
     )
   }.files
   classpath = files(
+    // TG-TZKEYS-20260930 A2: Java test sources (src/test/java, e.g. the KeyEvent
+    // shadow) land in the task-scoped javac dir on current AGP; the flat dir is the
+    // legacy layout — keep both so the shadow always precedes android.jar.
+    "${buildDir}/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
     "${buildDir}/intermediates/javac/debugUnitTest/classes",
     "${buildDir}/tmp/kotlin-classes/debugUnitTest",
+    "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
     "${buildDir}/intermediates/javac/debug/classes",
     "${buildDir}/tmp/kotlin-classes/debug",
   ) + configurations.debugUnitTestRuntimeClasspath + androidDependencyClasses + files(androidJar)
+  // The Java unit-test sources must be compiled even when only the Kotlin task would
+  // otherwise be scheduled — runMockTests reads the javac output dir directly.
+  dependsOn 'compileDebugUnitTestJavaWithJavac'
 
   if (project.hasProperty('testClass')) {
     def cls = project.property('testClass')

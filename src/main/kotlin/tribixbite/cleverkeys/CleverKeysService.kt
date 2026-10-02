@@ -59,7 +59,8 @@ import tribixbite.cleverkeys.ml.SwipeMLData
 class CleverKeysService : InputMethodService(),
     SharedPreferences.OnSharedPreferenceChangeListener,
     SuggestionBar.OnSuggestionSelectedListener,
-    ConfigChangeListener {
+    ConfigChangeListener,
+    Config.ILongPressActionHandler {
 
     // Unified prediction strategy: all predictions wait for gesture completion, so a partial
     // trace never produces a suggestion.
@@ -840,6 +841,23 @@ class CleverKeysService : InputMethodService(),
      * default region stays and the later requestApplyInsets (setInputView /
      * setSplitInfo / onConfigChanged) recomputes with measured geometry.
      */
+    /**
+     * TG-TZKEYS-20260930 A2: execute a Termux-row long-press action
+     * (routed from [Pointers] through [Keyboard2View.onLongPressAction]). The
+     * terminal-app gate and the key-event emission live in
+     * [KeyEventHandler.handleLongPressAction] — this is a thin delegation.
+     */
+    override fun handleLongPressAction(action: LongPressAction): Boolean =
+        _keyeventhandler.handleLongPressAction(action)
+
+    /**
+     * TG-TZKEYS-20260930 A2: long Tab → hide the keyboard (HIDE_KEYBOARD works in
+     * every app; the other actions are terminal-gated inside KeyEventHandler).
+     */
+    fun hideKeyboard() {
+        requestHideSelf(0)
+    }
+
     override fun onComputeInsets(outInsets: InputMethodService.Insets) {
         super.onComputeInsets(outInsets)
         val config = _config

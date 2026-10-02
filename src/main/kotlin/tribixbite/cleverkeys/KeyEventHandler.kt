@@ -306,6 +306,48 @@ class KeyEventHandler(
         sendKeyevent(KeyEvent.ACTION_UP, keyCode, metaState)
     }
 
+    /**
+     * TG-TZKEYS-20260930 A2: execute a [LongPressAction] of the Termux row
+     * (routed from [Pointers.handleLongPress] via the view/service chain).
+     *
+     * Gating: every action except [LongPressAction.HIDE_KEYBOARD] works only in
+     * terminal apps ([TerminalUtils.isTerminalApp] over the current editor) —
+     * outside a terminal the action is declined (returns false, nothing sent), so
+     * the long press falls back to the stock lock/repeat behavior. HIDE_KEYBOARD
+     * works in every app.
+     *
+     * @return true when the action was consumed, false when declined.
+     */
+    fun handleLongPressAction(action: LongPressAction): Boolean {
+        val isTerminal = TerminalUtils.isTerminalApp(recv.getCurrentEditorInfo())
+
+        // HIDE_KEYBOARD has no terminal gate: long Tab hides the keyboard everywhere.
+        if (action == LongPressAction.HIDE_KEYBOARD) {
+            recv.hideKeyboard()
+            return true
+        }
+
+        if (!isTerminal) return false
+
+        when (action) {
+            LongPressAction.SEND_ENTER -> send_key_down_up(KeyEvent.KEYCODE_ENTER, 0)
+            // META_ALT_ON = zellij MoveFocus (переключение фокуса панелей)
+            LongPressAction.ALT_UP -> send_key_down_up(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.META_ALT_ON)
+            LongPressAction.ALT_DOWN -> send_key_down_up(KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.META_ALT_ON)
+            LongPressAction.ALT_LEFT -> send_key_down_up(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.META_ALT_ON)
+            LongPressAction.ALT_RIGHT -> send_key_down_up(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.META_ALT_ON)
+            // Detach the zellij session: Ctrl+O then 'd' (two ordered key pairs)
+            LongPressAction.DETACH -> {
+                send_key_down_up(KeyEvent.KEYCODE_O, KeyEvent.META_CTRL_ON)
+                send_key_down_up(KeyEvent.KEYCODE_D, 0)
+            }
+            // zellij "Alt f" binding → ToggleFocusFullscreen
+            LongPressAction.TOGGLE_FULLSCREEN -> send_key_down_up(KeyEvent.KEYCODE_F, KeyEvent.META_ALT_ON)
+            LongPressAction.HIDE_KEYBOARD -> {} // unreachable — handled above
+        }
+        return true
+    }
+
     private fun sendKeyevent(eventAction: Int, eventCode: Int, metaState: Int) {
         val conn = recv.getCurrentInputConnection() ?: return
         conn.sendKeyEvent(
@@ -1037,6 +1079,9 @@ class KeyEventHandler(
         fun selection_state_changed(selectionIsOngoing: Boolean)
         fun getCurrentInputConnection(): InputConnection?
         fun getCurrentEditorInfo(): EditorInfo? = null // #113: needed for terminal app detection
+        // TG-TZKEYS-20260930 A2: long Tab → hide the keyboard (HIDE_KEYBOARD, no gate).
+        // CleverKeysService implements this with InputMethodService.requestHideSelf(0).
+        fun hideKeyboard() {}
         fun getContext(): Context? = null // #113: needed for terminal clipboard paste
         fun getHandler(): Handler
         fun handle_text_typed(text: String)

@@ -803,6 +803,15 @@ class Keyboard2View @JvmOverloads constructor(
     }
 
     /**
+     * TG-TZKEYS-20260930 A2: forward a Termux-row long-press action to the service
+     * ([CleverKeysService] implements [Config.ILongPressActionHandler]). The view's
+     * context IS the service — it creates this view. Returns false (declined) when
+     * the context isn't a handler, which falls the long press back to stock behavior.
+     */
+    override fun onLongPressAction(action: LongPressAction): Boolean =
+        (context as? Config.ILongPressActionHandler)?.handleLongPressAction(action) ?: false
+
+    /**
      * Execute a custom short swipe mapping defined by the user.
      * This is called from Pointers when a custom mapping is found for a short swipe gesture.
      */

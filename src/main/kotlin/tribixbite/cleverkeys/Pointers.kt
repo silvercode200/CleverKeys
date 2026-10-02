@@ -5,6 +5,7 @@ import android.graphics.PointF
 import android.os.Handler
 import android.os.Message
 import android.util.Log
+import android.view.KeyEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -1477,6 +1478,22 @@ class Pointers(
             }
         }
 
+        // TG-TZKEYS-20260930 A2: Termux-row long-press actions. Offer the mapped action
+        // to the handler BEFORE the stock lock branch — a consumed action replaces the
+        // lock/latch/repeat behavior entirely (long Alt = Enter, not an Alt lock). A
+        // declined action (terminal gate refused, no handler) falls through to the stock
+        // paths below unchanged. LOCKED pointers are exempt so a release of an
+        // already-locked modifier never re-fires the action.
+        if (ptr.value != null && (ptr.flags and FLAG_P_LOCKED) == 0) {
+            val action = termuxLongPressAction(ptr.value!!)
+            if (action != null && _handler.onLongPressAction(action)) {
+                ptr.flags = ptr.flags or FLAG_P_ACTION_SENT
+                removePtr(ptr)
+                _handler.onPointerFlagsChanged(HapticEvent.LONG_PRESS)
+                return
+            }
+        }
+
         // Long press toggle lock on modifiers
         if ((ptr.flags and FLAG_P_LATCHABLE) != 0) {
             if (!ptr.hasFlagsAny(FLAG_P_CANT_LOCK)) {
@@ -1503,8 +1520,7 @@ class Pointers(
         // For every other keys, key-repeat
         // #81: If keyrepeat_backspace_only is enabled, skip repeat for non-backspace/nav keys
         val isBackspaceOrNav = isBackspaceKey(kv) || hasNavigationSubkeys(ptr)
-        if (snap.keyrepeat_enabled && (!snap.keyrepeat_backspace_only || isBackspaceOrNav)) {
-            // If this was a deferred down (potential swipe), output the initial character first
+        if (snap.keyrepeat_enabled && (!snap.keyrepeat_backspace_only || isBackspaceOrNav)) {            // If this was a deferred down (potential swipe), output the initial character first
             // This handles holding space/letters without moving - outputs initial char then repeats
             if (ptr.hasFlagsAny(FLAG_P_DEFERRED_DOWN)) {
                 ptr.flags = ptr.flags and FLAG_P_DEFERRED_DOWN.inv()  // Clear deferred flag
@@ -1517,6 +1533,36 @@ class Pointers(
             )
         }
     }
+
+    /**
+     * TG-TZKEYS-20260930 A2: map a long-pressed key to its Termux-row
+     * [LongPressAction], or null when the key is not part of the row.
+     *
+     * Mapping: long Alt → SEND_ENTER, long Ctrl → TOGGLE_FULLSCREEN (both
+     * [KeyValue.Kind.Modifier]); long Tab → HIDE_KEYBOARD, long Esc → DETACH,
+     * long arrows → ALT_UP/DOWN/LEFT/RIGHT ([KeyValue.Kind.Keyevent] by keycode).
+     * The terminal-app gate itself lives in [KeyEventHandler.handleLongPressAction]
+     * (via [Config.ILongPressActionHandler]) — declining here falls through to the
+     * stock lock/repeat behavior.
+     */
+    private fun termuxLongPressAction(kv: KeyValue): LongPressAction? =
+        when {
+            kv.getKind() == KeyValue.Kind.Modifier -> when (kv.getModifier()) {
+                KeyValue.Modifier.ALT -> LongPressAction.SEND_ENTER
+                KeyValue.Modifier.CTRL -> LongPressAction.TOGGLE_FULLSCREEN
+                else -> null
+            }
+            kv.getKind() == KeyValue.Kind.Keyevent -> when (kv.getKeyevent()) {
+                KeyEvent.KEYCODE_TAB -> LongPressAction.HIDE_KEYBOARD
+                KeyEvent.KEYCODE_ESCAPE -> LongPressAction.DETACH
+                KeyEvent.KEYCODE_DPAD_UP -> LongPressAction.ALT_UP
+                KeyEvent.KEYCODE_DPAD_DOWN -> LongPressAction.ALT_DOWN
+                KeyEvent.KEYCODE_DPAD_LEFT -> LongPressAction.ALT_LEFT
+                KeyEvent.KEYCODE_DPAD_RIGHT -> LongPressAction.ALT_RIGHT
+                else -> null
+            }
+            else -> null
+        }
 
     // Sliding
 
@@ -1952,6 +1998,13 @@ class Pointers(
 
         /** Execute a custom short swipe mapping defined by the user. */
         fun onCustomShortSwipe(mapping: ShortSwipeMapping)
+
+        /** TG-TZKEYS-20260930 A2: a long press on a Termux-row key fired the mapped
+         *  [LongPressAction]. Return true when the action was consumed — the long press
+         *  then must not lock/latch/repeat, and the release must not emit the key.
+         *  Return false to decline (e.g. the terminal-app gate refused): the long press
+         *  falls through to the stock behavior. */
+        fun onLongPressAction(action: LongPressAction): Boolean = false
     }
 
     companion object {
@@ -1979,6 +2032,10 @@ class Pointers(
 
         /** Selection-delete mode - short swipe + hold on backspace to select text, delete on release. */
         const val FLAG_P_SELECTION_DELETE_MODE = 1 shl 11
+
+        /** TG-TZKEYS-20260930 A2: the long-press action was fired and consumed — the
+         *  pointer is already removed; a stray reference must not emit a key on release. */
+        const val FLAG_P_ACTION_SENT = 1 shl 12
 
         /** Minimum movement (px) to trigger nav event in TrackPoint mode. */
         const val TRACKPOINT_MOVEMENT_THRESHOLD = 15f

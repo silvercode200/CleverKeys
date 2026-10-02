@@ -1369,6 +1369,26 @@ class Config private constructor(
         fun mods_changed(mods: Pointers.Modifiers)
     }
 
+    /**
+     * TG-TZKEYS-20260930 A2: semantic long-press actions of the Termux row
+     * (long Alt → Enter, long Tab → hide the keyboard, long arrows → Alt+arrow
+     * (фокус панелей), long Esc → zellij detach (Ctrl+O, 'd'), long Ctrl → pane
+     * fullscreen). Implemented by [CleverKeysService]; called by [Pointers] via
+     * [Pointers.IPointerEventHandler.onLongPressAction].
+     */
+    interface ILongPressActionHandler {
+        /**
+         * Execute [action] in the focused editor's context.
+         *
+         * @return true when the action was consumed — the long press must not
+         * lock/latch/repeat the key and its release must not emit the key.
+         * false when declined (e.g. the terminal-app gate refused the action
+         * outside a terminal), which makes the long press fall back to the
+         * stock key behavior.
+         */
+        fun handleLongPressAction(action: LongPressAction): Boolean = false
+    }
+
     companion object {
         const val WIDE_DEVICE_THRESHOLD = 600
         private const val CONFIG_VERSION = 3
