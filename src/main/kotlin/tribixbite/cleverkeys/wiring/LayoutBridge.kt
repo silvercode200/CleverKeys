@@ -82,6 +82,23 @@ class LayoutBridge(
     }
 
     /**
+     * Toggle between two layouts by their display name (TG-CKSWIPE-20261010).
+     *
+     * Delegates to [LayoutManager.toggleLayoutByName] and updates the keyboard view
+     * when a switch occurred. Returns null (no view update) when a target layout
+     * is not configured.
+     *
+     * @param nameA Display name of layout A (e.g. "QWERTY (US)")
+     * @param nameB Display name of layout B (e.g. "ЙЦУКЕН (Русский)")
+     * @return The new current layout, or null if a target layout was not configured
+     */
+    fun toggleLayoutByName(nameA: String, nameB: String): KeyboardData? {
+        val layout = layoutManager.toggleLayoutByName(nameA, nameB) ?: return null
+        keyboardView.setKeyboard(layout)
+        return layout
+    }
+
+    /**
      * Load a layout from resources.
      *
      * @param layoutId Resource ID of the layout to load

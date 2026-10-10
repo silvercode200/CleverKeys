@@ -131,6 +131,7 @@ enum class AvailableCommand(
 
     // Language switching
     PRIMARY_LANG_TOGGLE("Toggle Primary Language", "Switch between two primary languages", "language"),
+    LAYOUT_LANG_TOGGLE("Toggle RU/EN Layout", "Switch between Russian and English keyboard layouts", "language"),
     SECONDARY_LANG_TOGGLE("Toggle Secondary Language", "Switch between two secondary languages", "translate");
 
     companion object {
@@ -153,7 +154,7 @@ enum class AvailableCommand(
             "Words" to listOf(WORD_LEFT, WORD_RIGHT, DELETE_WORD),
             "Layout" to listOf(SWITCH_FORWARD, SWITCH_BACKWARD),
             "Text" to listOf(TEXT_ASSIST, REPLACE_TEXT, SHOW_TEXT_MENU),
-            "Language" to listOf(PRIMARY_LANG_TOGGLE, SECONDARY_LANG_TOGGLE),
+            "Language" to listOf(PRIMARY_LANG_TOGGLE, LAYOUT_LANG_TOGGLE, SECONDARY_LANG_TOGGLE),
             "System" to listOf(SWITCH_IME, VOICE_INPUT)
         )
     }

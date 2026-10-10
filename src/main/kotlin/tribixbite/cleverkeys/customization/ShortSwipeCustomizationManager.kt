@@ -117,6 +117,9 @@ class ShortSwipeCustomizationManager private constructor(private val context: Co
                     Log.e(TAG, "Failed to load custom mappings", e)
                 }
             }
+            // Seed default Fn diagonal mappings (won't override user customizations loaded above)
+            seedDefaultMappings()
+            _mappingsFlow.value = mappingCache.values.toList()
             isLoaded = true
         }
     }
@@ -356,6 +359,30 @@ class ShortSwipeCustomizationManager private constructor(private val context: Co
      */
     val hasCustomMappings: Boolean
         get() = mappingCache.isNotEmpty()
+
+    /**
+     * Seed default short swipe mappings for the Fn diagonal gesture.
+     *
+     * Adds default mappings for fn+NE/SE/SW/NW → LAYOUT_LANG_TOGGLE if the user
+     * hasn't already customized that key+direction. Called from [loadMappings]
+     * after file load.
+     */
+    internal fun seedDefaultMappings() {
+        val diagonalDirs = listOf(SwipeDirection.NE, SwipeDirection.SE, SwipeDirection.SW, SwipeDirection.NW)
+        for (dir in diagonalDirs) {
+            val mapping = ShortSwipeMapping.command(
+                keyCode = "fn",
+                direction = dir,
+                displayText = "⇄",
+                command = AvailableCommand.LAYOUT_LANG_TOGGLE
+            )
+            val key = mapping.toStorageKey()
+            if (!mappingCache.containsKey(key)) {
+                mappingCache[key] = mapping
+            }
+        }
+        rebuildByKeyIndex()
+    }
 
     companion object {
         private const val TAG = "ShortSwipeCustomMgr"

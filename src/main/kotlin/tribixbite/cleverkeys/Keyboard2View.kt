@@ -845,8 +845,9 @@ class Keyboard2View @JvmOverloads constructor(
 
             // v1.2.0 custom commands - check before KeyValue to prevent String fallback interception
             val customCommandHandled = when (actionValue) {
-                "primaryLangToggle" -> { togglePrimaryLanguage(); true }
-                "secondaryLangToggle" -> { toggleSecondaryLanguage(); true }
+                "PRIMARY_LANG_TOGGLE" -> { togglePrimaryLanguage(); true }
+                "SECONDARY_LANG_TOGGLE" -> { toggleSecondaryLanguage(); true }
+                "LAYOUT_LANG_TOGGLE" -> { toggleRuEnLayout(); true }
                 "textAssist" -> { launchTextAssistActivity(inputConnection); true }
                 "replaceText" -> { launchReplaceTextActivity(inputConnection); true }
                 "showTextMenu" -> { showTextContextMenu(inputConnection); true }
@@ -929,6 +930,10 @@ class Keyboard2View @JvmOverloads constructor(
                 AvailableCommand.PRIMARY_LANG_TOGGLE -> {
                     if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Keyboard2View", "Executing PRIMARY_LANG_TOGGLE")
                     togglePrimaryLanguage()
+                }
+                AvailableCommand.LAYOUT_LANG_TOGGLE -> {
+                    if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Keyboard2View", "Executing LAYOUT_LANG_TOGGLE")
+                    toggleRuEnLayout()
                 }
                 AvailableCommand.SECONDARY_LANG_TOGGLE -> {
                     if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Keyboard2View", "Executing SECONDARY_LANG_TOGGLE")
@@ -1238,6 +1243,40 @@ class Keyboard2View @JvmOverloads constructor(
             // Catch Throwable (not just Exception) to prevent OOM/Error from killing IME
             Log.e("Keyboard2View", "Failed to toggle secondary language", t)
             _keyboard2?.showSuggestionBarMessage("Language toggle failed")
+        }
+    }
+
+    /**
+     * Toggle between Russian (ЙЦУКЕН) and English (QWERTY) keyboard layouts (TG-CKSWIPE-20261010).
+     *
+     * Unlike [togglePrimaryLanguage] which swaps the dictionary language preference,
+     * this switches the VISUAL keyboard layout via [LayoutManager.toggleLayoutByName]
+     * and also updates `pref_primary_language` so the dictionary follows the layout.
+     */
+    private fun toggleRuEnLayout() {
+        if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Keyboard2View", "toggleRuEnLayout() called")
+        try {
+            val result = _keyboard2?.toggleLayoutByName("QWERTY (US)", "ЙЦУКЕН (Русский)")
+            if (result == null) {
+                _keyboard2?.showSuggestionBarMessage("RU/EN layout not configured")
+                return
+            }
+
+            // Update dictionary language to follow the visual layout
+            val langCode = when (result.name) {
+                "ЙЦУКЕН (Русский)" -> "ru"
+                "QWERTY (US)" -> "en"
+                else -> "en"
+            }
+            val prefs = DirectBootAwarePreferences.get_shared_preferences(context)
+            prefs.edit().putString("pref_primary_language", langCode).apply()
+
+            val feedback = if (langCode == "ru") "Русский" else "English"
+            _keyboard2?.showSuggestionBarMessage(feedback)
+            if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Keyboard2View", "Layout toggled to: $feedback (${result.name})")
+        } catch (t: Throwable) {
+            Log.e("Keyboard2View", "Failed to toggle RU/EN layout", t)
+            _keyboard2?.showSuggestionBarMessage("Layout toggle failed")
         }
     }
 

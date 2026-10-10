@@ -149,6 +149,37 @@ class LayoutManager(
     }
 
     /**
+     * Toggle between two layouts by their [KeyboardData.name] (display name from XML).
+     *
+     * If the current layout matches [nameA], switches to [nameB] and vice-versa.
+     * If the current layout is neither, defaults to [nameA].
+     * If either layout is not found in [config.layouts], returns null (no-op).
+     *
+     * @param nameA Display name of layout A (e.g. "QWERTY (US)")
+     * @param nameB Display name of layout B (e.g. "ЙЦУКЕН (Русский)")
+     * @return The new current layout, or null if a target layout was not configured
+     */
+    fun toggleLayoutByName(nameA: String, nameB: String): KeyboardData? {
+        val layouts = config.layouts
+        val indexA = layouts.indexOfFirst { it != null && it.name == nameA }
+        val indexB = layouts.indexOfFirst { it != null && it.name == nameB }
+
+        // If either layout is not configured, no-op
+        if (indexA < 0 || indexB < 0) return null
+
+        // Toggle: on A → switch to B; on B → switch to A; else default to A
+        val currentIdx = config.get_current_layout()
+        val currentName = layouts.getOrNull(currentIdx)?.name
+        val targetIndex = when (currentName) {
+            nameA -> indexB
+            nameB -> indexA
+            else -> indexA
+        }
+
+        return setTextLayout(targetIndex)
+    }
+
+    /**
      * Sets a special layout (numeric, emoji, etc.).
      *
      * @param layout Special layout to display

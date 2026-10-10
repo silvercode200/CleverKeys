@@ -364,6 +364,14 @@ class CleverKeysService : InputMethodService(),
     }
 
     /**
+     * Toggle between two layouts by display name (TG-CKSWIPE-20261010).
+     * Returns null when a target layout is not configured.
+     */
+    fun toggleLayoutByName(nameA: String, nameB: String): KeyboardData? {
+        return _layoutBridge.toggleLayoutByName(nameA, nameB)
+    }
+
+    /**
      * Load a layout from resources.
      * (v1.32.363: Delegated to LayoutManager)
      * (v1.32.408: Delegated to LayoutBridge)

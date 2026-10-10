@@ -594,6 +594,10 @@ class CustomShortSwipeExecutor(private val context: Context) {
                     if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d(TAG, "SECONDARY_LANG_TOGGLE command - requires keyboard service handling")
                     false
                 }
+                AvailableCommand.LAYOUT_LANG_TOGGLE -> {
+                    if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d(TAG, "LAYOUT_LANG_TOGGLE command - requires keyboard service handling")
+                    false
+                }
             }
             if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d(TAG, "Executed COMMAND action: ${command.name} -> $success")
             success
