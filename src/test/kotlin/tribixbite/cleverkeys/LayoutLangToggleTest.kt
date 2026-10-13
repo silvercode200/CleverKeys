@@ -42,6 +42,13 @@ class LayoutLangToggleTest {
     private fun layout(name: String?): KeyboardData =
         mockk<KeyboardData>(relaxed = true) { every { this@mockk.name } returns name }
 
+    /** A layout with both [name] and [script] set (as loaded from XML with a script attribute). */
+    private fun layoutWithScript(name: String?, script: String?): KeyboardData =
+        mockk<KeyboardData>(relaxed = true) {
+            every { this@mockk.name } returns name
+            every { this@mockk.script } returns script
+        }
+
     @Before
     fun setup() {
         mockkStatic(Log::class)
@@ -206,6 +213,138 @@ class LayoutLangToggleTest {
             .that(SwipeDirection.fromDelta(-10f, 10f)).isEqualTo(SwipeDirection.SW)
         assertWithMessage("NW: dx<0, dy<0 (up-left in screen coords)")
             .that(SwipeDirection.fromDelta(-10f, -10f)).isEqualTo(SwipeDirection.NW)
+    }
+
+    // ==================== TG-STABRENDER-20261013: RU/EN fallback by script ====================
+    //
+    // The named-pair toggle fails silently on the default config ([{"kind":"system"}] →
+    // layouts=[null]) because neither "QWERTY (US)" nor "ЙЦУКЕН (Русский)" is present.
+    // The fix adds a fallback that finds latin/cyrillic layouts by [KeyboardData.script]
+    // and an auto-seed that ensures both are available at init time.
+
+    /**
+     * RED: layouts with script="latin"/"cyrillic" but NOT named "QWERTY (US)"/"ЙЦУКЕН (Русский)"
+     * → toggleRuEnWithFallback should find them by script and toggle.
+     */
+    @Test
+    fun toggleRuEnFallbackFindsByScript() {
+        val enLayout = layoutWithScript("QWERTY (UK)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Українська)", "cyrillic")
+        val lm = layoutManager(locale = enLayout, layouts = listOf(enLayout, ruLayout))
+        currentLayoutIndex = 0 // currently on EN
+
+        val result = lm.toggleRuEnWithFallback()
+
+        assertWithMessage("should switch to RU layout via script fallback")
+            .that(result).isSameInstanceAs(ruLayout)
+        assertWithMessage("current layout index should be 1 (RU)")
+            .that(currentLayoutIndex).isEqualTo(1)
+    }
+
+    /**
+     * RED: toggle from cyrillic back to latin via script fallback.
+     */
+    @Test
+    fun toggleRuEnFallbackFromCyrillicToLatin() {
+        val enLayout = layoutWithScript("QWERTY (UK)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Українська)", "cyrillic")
+        val lm = layoutManager(locale = enLayout, layouts = listOf(enLayout, ruLayout))
+        currentLayoutIndex = 1 // currently on RU
+
+        val result = lm.toggleRuEnWithFallback()
+
+        assertWithMessage("should switch to EN layout via script fallback")
+            .that(result).isSameInstanceAs(enLayout)
+        assertWithMessage("current layout index should be 0 (EN)")
+            .that(currentLayoutIndex).isEqualTo(0)
+    }
+
+    /**
+     * RED: default config (only SystemLayout = null entry) → no script-tagged layouts
+     * → toggleRuEnWithFallback returns null (needs auto-seed to work).
+     */
+    @Test
+    fun toggleRuEnFallbackDefaultConfigReturnsNull() {
+        val lm = layoutManager(locale = layout("QWERTY (US)"), layouts = listOf(null))
+        currentLayoutIndex = 0
+
+        val result = lm.toggleRuEnWithFallback()
+
+        assertWithMessage("should return null when no latin/cyrillic layouts are configured")
+            .that(result).isNull()
+    }
+
+    /**
+     * RED: named pair found → exact match is preferred over script fallback.
+     */
+    @Test
+    fun toggleRuEnWithFallbackUsesNamedPairWhenAvailable() {
+        val enLayout = layoutWithScript("QWERTY (US)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Русский)", "cyrillic")
+        val lm = layoutManager(locale = enLayout, layouts = listOf(enLayout, ruLayout))
+        currentLayoutIndex = 0
+
+        val result = lm.toggleRuEnWithFallback()
+
+        assertWithMessage("should switch to RU via named pair (exact match preferred)")
+            .that(result).isSameInstanceAs(ruLayout)
+        assertWithMessage("current layout index should be 1 (RU)")
+            .that(currentLayoutIndex).isEqualTo(1)
+    }
+
+    /**
+     * RED: current layout is neither latin nor cyrillic (e.g. arabic) → defaults to latin.
+     */
+    @Test
+    fun toggleRuEnFallbackDefaultsToLatinFromOtherScript() {
+        val enLayout = layoutWithScript("QWERTY (UK)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Українська)", "cyrillic")
+        val arLayout = layoutWithScript("Arabic PC", "arabic")
+        val lm = layoutManager(locale = enLayout, layouts = listOf(enLayout, ruLayout, arLayout))
+        currentLayoutIndex = 2 // currently on arabic
+
+        val result = lm.toggleRuEnWithFallback()
+
+        assertWithMessage("should default to EN (latin) when current is neither latin nor cyrillic")
+            .that(result).isSameInstanceAs(enLayout)
+        assertWithMessage("current layout index should be 0 (EN)")
+            .that(currentLayoutIndex).isEqualTo(0)
+    }
+
+    /**
+     * RED: needsDefaultRuEnLayouts returns true when config has no latin/cyrillic layouts.
+     */
+    @Test
+    fun needsDefaultRuEnLayoutsReturnsTrueForDefaultConfig() {
+        val lm = layoutManager(locale = layout("QWERTY (US)"), layouts = listOf(null))
+
+        assertWithMessage("default config (system only) should need default RU/EN layouts")
+            .that(lm.needsDefaultRuEnLayouts()).isTrue()
+    }
+
+    /**
+     * RED: needsDefaultRuEnLayouts returns false when both latin and cyrillic are present.
+     */
+    @Test
+    fun needsDefaultRuEnLayoutsReturnsFalseWhenBothPresent() {
+        val enLayout = layoutWithScript("QWERTY (UK)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Українська)", "cyrillic")
+        val lm = layoutManager(locale = enLayout, layouts = listOf(enLayout, ruLayout))
+
+        assertWithMessage("config with both latin and cyrillic should not need defaults")
+            .that(lm.needsDefaultRuEnLayouts()).isFalse()
+    }
+
+    /**
+     * RED: needsDefaultRuEnLayouts returns true when only latin is present (no cyrillic).
+     */
+    @Test
+    fun needsDefaultRuEnLayoutsReturnsTrueWhenOnlyLatinPresent() {
+        val enLayout = layoutWithScript("QWERTY (US)", "latin")
+        val lm = layoutManager(locale = enLayout, layouts = listOf(enLayout, null))
+
+        assertWithMessage("config with latin but no cyrillic should need default cyrillic")
+            .that(lm.needsDefaultRuEnLayouts()).isTrue()
     }
 
     // ------------------------------------------------------------------ reflection

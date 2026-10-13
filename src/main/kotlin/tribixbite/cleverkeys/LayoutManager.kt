@@ -180,6 +180,96 @@ class LayoutManager(
     }
 
     /**
+     * Toggle between RU and EN layouts with fallback (TG-STABRENDER-20261013).
+     *
+     * First tries the exact name match via [toggleLayoutByName] using the canonical
+     * display names "QWERTY (US)" and "ЙЦУКЕН (Русский)". If the named pair is not
+     * configured (the common case on a default install where only a SystemLayout
+     * entry exists), falls back to finding any latin/cyrillic layout by
+     * [KeyboardData.script] and toggling between those.
+     *
+     * @return The new current layout, or null if no suitable latin/cyrillic pair was found
+     */
+    fun toggleRuEnWithFallback(): KeyboardData? {
+        // 1. Try exact name match (preserves existing behavior when named pair is configured)
+        val result = toggleLayoutByName("QWERTY (US)", "ЙЦУКЕН (Русский)")
+        if (result != null) return result
+
+        // 2. Fallback: find latin/cyrillic layouts by script tag
+        val layouts = config.layouts
+        val latinIdx = layouts.indexOfFirst { it != null && it.script == "latin" }
+        val cyrillicIdx = layouts.indexOfFirst { it != null && it.script == "cyrillic" }
+        if (latinIdx < 0 || cyrillicIdx < 0) return null
+
+        // Toggle: on latin → switch to cyrillic; on cyrillic → switch to latin; else default to latin
+        val currentIdx = config.get_current_layout()
+        val currentScript = layouts.getOrNull(currentIdx)?.script
+        val targetIndex = when (currentScript) {
+            "latin" -> cyrillicIdx
+            "cyrillic" -> latinIdx
+            else -> latinIdx
+        }
+
+        return setTextLayout(targetIndex)
+    }
+
+    /**
+     * Check whether [config.layouts] contains at least one latin and one cyrillic layout.
+     *
+     * Used by [ensureDefaultRuEnLayouts] to decide whether auto-seeding is needed.
+     * A default install with only a SystemLayout (null) entry will return true.
+     *
+     * @return true if either a latin or a cyrillic layout is missing from config.layouts
+     */
+    fun needsDefaultRuEnLayouts(): Boolean {
+        val layouts = config.layouts
+        val hasLatin = layouts.any { it != null && it.script == "latin" }
+        val hasCyrillic = layouts.any { it != null && it.script == "cyrillic" }
+        return !(hasLatin && hasCyrillic)
+    }
+
+    /**
+     * Ensure at least one latin and one cyrillic layout are available in [config.layouts].
+     *
+     * If either is missing, auto-seeds the default QWERTY (US) (latn_qwerty_us) and/or
+     * ЙЦУКЕН (Русский) (cyrl_jcuken_ru) from bundled resources. Does NOT overwrite or
+     * remove user-configured layouts — only appends.
+     *
+     * Requires Android Context/Resources — call from IME initialization, not from tests.
+     *
+     * @return true if layouts were added (config was modified)
+     */
+    fun ensureDefaultRuEnLayouts(): Boolean {
+        if (!needsDefaultRuEnLayouts()) return false
+
+        val newLayouts = config.layouts.toMutableList()
+        var added = false
+
+        // Add latin layout if missing
+        val hasLatin = newLayouts.any { it != null && it.script == "latin" }
+        if (!hasLatin) {
+            loadLayout(R.raw.latn_qwerty_us)?.let {
+                newLayouts.add(it)
+                added = true
+            }
+        }
+
+        // Add cyrillic layout if missing
+        val hasCyrillic = newLayouts.any { it != null && it.script == "cyrillic" }
+        if (!hasCyrillic) {
+            loadLayout(R.raw.cyrl_jcuken_ru)?.let {
+                newLayouts.add(it)
+                added = true
+            }
+        }
+
+        if (added) {
+            config.layouts = newLayouts
+        }
+        return added
+    }
+
+    /**
      * Sets a special layout (numeric, emoji, etc.).
      *
      * @param layout Special layout to display

@@ -1252,20 +1252,29 @@ class Keyboard2View @JvmOverloads constructor(
      * Unlike [togglePrimaryLanguage] which swaps the dictionary language preference,
      * this switches the VISUAL keyboard layout via [LayoutManager.toggleLayoutByName]
      * and also updates `pref_primary_language` so the dictionary follows the layout.
+     *
+     * TG-STABRENDER-20261013: Now uses [CleverKeysService.toggleRuEnWithFallback] which
+     * auto-seeds default latin/cyrillic layouts if the named pair is not configured,
+     * and falls back to finding any latin/cyrillic layout by [KeyboardData.script].
+     * This fixes the silent no-op on default config (only SystemLayout entry).
      */
     private fun toggleRuEnLayout() {
         if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Keyboard2View", "toggleRuEnLayout() called")
         try {
-            val result = _keyboard2?.toggleLayoutByName("QWERTY (US)", "ЙЦУКЕН (Русский)")
+            val result = _keyboard2?.toggleRuEnWithFallback()
             if (result == null) {
-                _keyboard2?.showSuggestionBarMessage("RU/EN layout not configured")
+                _keyboard2?.showSuggestionBarMessage("RU/EN layout not available — add layouts in Settings")
                 return
             }
 
-            // Update dictionary language to follow the visual layout
-            val langCode = when (result.name) {
-                "ЙЦУКЕН (Русский)" -> "ru"
-                "QWERTY (US)" -> "en"
+            // Update dictionary language to follow the visual layout.
+            // Check script first (fallback pair may not have the canonical names),
+            // then fall back to exact name match.
+            val langCode = when {
+                result.script == "cyrillic" -> "ru"
+                result.script == "latin" -> "en"
+                result.name == "ЙЦУКЕН (Русский)" -> "ru"
+                result.name == "QWERTY (US)" -> "en"
                 else -> "en"
             }
             val prefs = DirectBootAwarePreferences.get_shared_preferences(context)

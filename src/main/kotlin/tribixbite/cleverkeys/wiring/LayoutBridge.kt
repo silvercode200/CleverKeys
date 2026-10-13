@@ -99,6 +99,23 @@ class LayoutBridge(
     }
 
     /**
+     * Toggle between RU and EN layouts with fallback and auto-seed (TG-STABRENDER-20261013).
+     *
+     * Ensures default latin/cyrillic layouts are available (auto-seeding if needed),
+     * then delegates to [LayoutManager.toggleRuEnWithFallback] and updates the keyboard
+     * view when a switch occurred. Returns null (no view update) when no suitable pair
+     * was found even after auto-seeding.
+     *
+     * @return The new current layout, or null if no latin/cyrillic pair was available
+     */
+    fun toggleRuEnWithFallback(): KeyboardData? {
+        layoutManager.ensureDefaultRuEnLayouts()
+        val layout = layoutManager.toggleRuEnWithFallback() ?: return null
+        keyboardView.setKeyboard(layout)
+        return layout
+    }
+
+    /**
      * Load a layout from resources.
      *
      * @param layoutId Resource ID of the layout to load

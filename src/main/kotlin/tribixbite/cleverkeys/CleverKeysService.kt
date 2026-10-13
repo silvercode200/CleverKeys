@@ -372,6 +372,19 @@ class CleverKeysService : InputMethodService(),
     }
 
     /**
+     * Toggle between RU and EN layouts with fallback + auto-seed (TG-STABRENDER-20261013).
+     *
+     * Unlike [toggleLayoutByName] which fails silently when the named pair is not
+     * configured, this method auto-seeds default latin/cyrillic layouts if missing
+     * and falls back to finding any latin/cyrillic layout by script tag.
+     *
+     * @return The new current layout, or null if no suitable pair was available
+     */
+    fun toggleRuEnWithFallback(): KeyboardData? {
+        return _layoutBridge.toggleRuEnWithFallback()
+    }
+
+    /**
      * Load a layout from resources.
      * (v1.32.363: Delegated to LayoutManager)
      * (v1.32.408: Delegated to LayoutBridge)
