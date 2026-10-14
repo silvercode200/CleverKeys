@@ -5,11 +5,8 @@ import android.util.Log
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.mockkObject
 import io.mockk.mockkStatic
-import io.mockk.Runs
 import io.mockk.spyk
 import io.mockk.unmockkAll
 import org.junit.After
@@ -70,15 +67,11 @@ class LayoutLangToggleTest {
         every { LayoutModifier.modify_layout(any()) } answers { firstArg() }
 
         // TG-CKKEYS-DEPLOY-20261014: setTextLayout now calls ensureDefaultRuEnLayouts()
-        // which calls loadLayout() → KeyboardData.load(). On the JVM test classpath, the
-        // android.jar stub of Resources.getXml throws RuntimeException("Stub!"). We stub
-        // Logs.exn to suppress the error logging; loadLayout returns null (caught by the
-        // ?.let in ensureDefaultRuEnLayouts, making it a no-op when layouts are already set).
-        // Tests that need real re-seeding use layoutManagerWithMockLoad which spies loadLayout.
-        mockkObject(Logs)
-        every { Logs.exn(any(), any()) } just Runs
-        mockkObject(Log)
-        every { Log.e(any(), any(), any()) } returns 0
+        // which calls loadLayout(). loadLayout is stubbed to return null on the spy
+        // (see layoutManager/layoutManagerWithMockLoad), so KeyboardData.load is never
+        // called and ensureDefaultRuEnLayouts is a no-op when layouts are already set.
+        // Tests that need real re-seeding use layoutManagerWithMockLoad which returns
+        // test layouts from the spied loadLayout.
 
         currentLayoutIndex = 0
         config = mockk(relaxed = true)
@@ -93,14 +86,16 @@ class LayoutLangToggleTest {
 
     private fun layoutManager(locale: KeyboardData, layouts: List<KeyboardData?>): LayoutManager {
         config.layouts = layouts
-        val lm = objenesis.newInstance(LayoutManager::class.java)
-        lm.setField("config", config)
-        lm.setField("localeTextLayout", locale)
+        val base = objenesis.newInstance(LayoutManager::class.java)
+        base.setField("config", config)
+        base.setField("localeTextLayout", locale)
         // TG-CKKEYS-DEPLOY-20261014: setTextLayout calls ensureDefaultRuEnLayouts() which
-        // calls loadLayout() → keyboardDataCache.get(). Objenesis skips the constructor
-        // (which initializes the cache), so set it manually.
-        lm.setField("keyboardDataCache", android.util.LruCache<Int, KeyboardData>(10))
-        lm.setField("context", mockk<Context>(relaxed = true))
+        // calls loadLayout() → KeyboardData.load() → Resources.getXml (Stub! exception).
+        // Stub loadLayout to return null so ensureDefaultRuEnLayouts is a no-op for tests
+        // where layouts are already set. Tests that need real re-seeding use
+        // layoutManagerWithMockLoad which returns test layouts from loadLayout.
+        val lm = spyk(base)
+        every { lm.loadLayout(any()) } returns null
         return lm
     }
 
