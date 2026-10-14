@@ -988,6 +988,9 @@ tasks.register('runPureTests', JavaExec) {
     // resolve to exactly their expected characters; empty modifiers don't
     // transform; coveredSubLabelMask prevents duplicate rendering.
     'tribixbite.cleverkeys.CanonicalLabelsTest',
+    // TG-CKKEYS-20261014 node 2: split_mode default-ON for tablets/large screens.
+    // Pure function — no Android deps, no mockk. Tests SplitModeDefaults.resolveSplitMode.
+    'tribixbite.cleverkeys.SplitModeDefaultTest',
   ]
 
   mainClass = 'org.junit.runner.JUnitCore'

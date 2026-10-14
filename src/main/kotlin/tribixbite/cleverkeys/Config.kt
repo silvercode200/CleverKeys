@@ -518,6 +518,63 @@ object HapticsMigration {
     ): Boolean = !alreadyMigrated && vibrateCustom && paramsAtDefaults
 }
 
+/**
+ * TG-CKKEYS-20261014 node 2: split_mode default-ON for tablets/large screens.
+ *
+ * When the user has NOT explicitly set the split_mode preference (first run or
+ * after reinstall), split defaults ON for tablets/large screens and OFF for
+ * phones. When the pref IS set, the user's choice always wins.
+ *
+ * This logic lives in a pure function with zero Android dependencies so it can
+ * be unit-tested in pure JVM (no mockk, no android.jar stubs). The Android
+ * Configuration constants are hardcoded because they are stable platform values
+ * that never change across API levels.
+ *
+ * Tablet detection uses two criteria (OR):
+ * 1. Configuration.screenLayout size bits == SCREENLAYOUT_SIZE_XLARGE
+ * 2. Screen width in dp >= 600 (matches [Config.WIDE_DEVICE_THRESHOLD])
+ */
+object SplitModeDefaults {
+    /** Tablet/large-screen width threshold in dp (matches WIDE_DEVICE_THRESHOLD). */
+    const val TABLET_WIDTH_DP_THRESHOLD = 600
+
+    // Android Configuration constants — stable across all API levels, hardcoded
+    // for JVM testability (no dependency on android.content.res.Configuration).
+    private const val SCREENLAYOUT_SIZE_MASK = 0x0F
+    private const val SCREENLAYOUT_SIZE_XLARGE = 4
+
+    /**
+     * Resolve the effective split_mode value for a device.
+     *
+     * If the user has explicitly set the split_mode preference, their choice is
+     * returned unchanged (never overridden by the tablet default). If the pref
+     * is unset (first run or after reinstall), split defaults ON for tablets
+     * (XLARGE screen layout OR screen width >= 600dp) and OFF for phones.
+     *
+     * This ensures split mode survives reinstalls on tablets: even if the pref
+     * is cleared by a reinstall, the code-level default re-enables split for
+     * large screens automatically.
+     *
+     * @param prefSet true when SharedPreferences contains "split_mode" (user explicitly set it)
+     * @param prefValue the stored pref value (only meaningful when prefSet is true)
+     * @param screenWidthDp device screen width in density-independent pixels
+     * @param screenLayout raw Configuration.screenLayout value (size bits are masked internally);
+     *   defaults to 0 (no layout info → width-only decision)
+     * @return the effective split_mode: user's choice if set, else tablet default
+     */
+    fun resolveSplitMode(
+        prefSet: Boolean,
+        prefValue: Boolean,
+        screenWidthDp: Int,
+        screenLayout: Int = 0
+    ): Boolean {
+        if (prefSet) return prefValue
+        val sizeBits = screenLayout and SCREENLAYOUT_SIZE_MASK
+        return sizeBits == SCREENLAYOUT_SIZE_XLARGE ||
+            screenWidthDp >= TABLET_WIDTH_DP_THRESHOLD
+    }
+}
+
 class Config private constructor(
     private val _prefs: SharedPreferences,
     res: Resources,
@@ -783,6 +840,9 @@ class Config private constructor(
     fun refresh(res: Resources, foldableUnfolded: Boolean?) {
         version++
         val dm = res.displayMetrics
+        // Computed early so split_mode's tablet default can use it (T6/TG-CKKEYS).
+        // Also feeds wide_screen at the tail of refresh() — single computation.
+        val screen_width_dp = dm.widthPixels / dm.density
         orientation_landscape = res.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         this.foldable_unfolded = foldableUnfolded ?: false
 
@@ -878,7 +938,14 @@ class Config private constructor(
 
         // Split mode (T6): gap clamped to the pref bounds so a bad import can
         // neither collapse the halves onto each other nor eat the keyboard.
-        split_mode = _prefs.getBoolean("split_mode", Defaults.SPLIT_MODE)
+        // TG-CKKEYS-20261014: default-ON for tablets/large screens when the pref
+        // is unset (first run / reinstall). User's explicit choice always wins.
+        split_mode = SplitModeDefaults.resolveSplitMode(
+            prefSet = _prefs.contains("split_mode"),
+            prefValue = _prefs.getBoolean("split_mode", Defaults.SPLIT_MODE),
+            screenWidthDp = screen_width_dp.toInt(),
+            screenLayout = res.configuration.screenLayout
+        )
         split_gap = safeGetInt(_prefs, "split_gap", Defaults.SPLIT_GAP)
             .coerceIn(SplitLayout.GAP_MIN_PERCENT, SplitLayout.GAP_MAX_PERCENT)
 
@@ -1075,7 +1142,7 @@ class Config private constructor(
         onnx_xnnpack_threads = safeGetInt(_prefs, "onnx_xnnpack_threads", Defaults.ONNX_XNNPACK_THREADS)
             .coerceIn(1, 8)  // Clamp to valid range
 
-        val screen_width_dp = dm.widthPixels / dm.density
+        // screen_width_dp computed at top of refresh() (shared with split_mode default)
         wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD
 
         // MUST stay the last statement: every field the hot paths read has now been written,
