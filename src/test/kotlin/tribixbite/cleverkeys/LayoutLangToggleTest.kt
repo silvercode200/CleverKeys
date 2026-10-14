@@ -347,6 +347,63 @@ class LayoutLangToggleTest {
             .that(lm.needsDefaultRuEnLayouts()).isTrue()
     }
 
+    // ==================== TG-CKKEYS-20261014: Fn diagonal → always toggle ====================
+    //
+    // The seed (seedDefaultMappings) fills fn+NE/SE/SW/NW → LAYOUT_LANG_TOGGLE asynchronously
+    // via scope.launch, so a swipe before the seed completes finds an empty cache and falls
+    // through to the built-in sublabel (NE = change_method → system IME picker). The fix adds
+    // a static fallback in Pointers: when the custom mapping cache miss happens for fn+diagonal,
+    // the gesture handler uses LAYOUT_LANG_TOGGLE as the default instead of the built-in sublabel.
+
+    /**
+     * RED→GREEN: fnDiagonalDefaultMapping returns LAYOUT_LANG_TOGGLE for all 4 diagonals.
+     */
+    @Test
+    fun fnDiagonalDefaultMappingReturnsToggleForAllDiagonals() {
+        for (dir in listOf(SwipeDirection.NE, SwipeDirection.SE, SwipeDirection.SW, SwipeDirection.NW)) {
+            val mapping = Pointers.fnDiagonalDefaultMapping("fn", dir)
+            assertWithMessage("fn:$dir should default to LAYOUT_LANG_TOGGLE")
+                .that(mapping).isNotNull()
+            assertWithMessage("fn:$dir default action should be LAYOUT_LANG_TOGGLE")
+                .that(mapping!!.actionValue).isEqualTo("LAYOUT_LANG_TOGGLE")
+        }
+    }
+
+    /**
+     * RED→GREEN: fnDiagonalDefaultMapping returns null for cardinal directions.
+     * N/E/S/W have their own built-in sublabels and should NOT get the toggle default.
+     */
+    @Test
+    fun fnDiagonalDefaultMappingReturnsNullForCardinalDirections() {
+        for (dir in listOf(SwipeDirection.N, SwipeDirection.E, SwipeDirection.S, SwipeDirection.W)) {
+            val mapping = Pointers.fnDiagonalDefaultMapping("fn", dir)
+            assertWithMessage("fn:$dir (cardinal) should NOT default to toggle")
+                .that(mapping).isNull()
+        }
+    }
+
+    /**
+     * RED→GREEN: fnDiagonalDefaultMapping returns null for non-Fn keys.
+     */
+    @Test
+    fun fnDiagonalDefaultMappingReturnsNullForNonFnKeys() {
+        for (key in listOf("space", "ctrl", "a", "")) {
+            val mapping = Pointers.fnDiagonalDefaultMapping(key, SwipeDirection.NE)
+            assertWithMessage("'$key' should NOT get the Fn diagonal toggle default")
+                .that(mapping).isNull()
+        }
+    }
+
+    /**
+     * RED→GREEN: fnDiagonalDefaultMapping is case-insensitive on keyCode.
+     */
+    @Test
+    fun fnDiagonalDefaultMappingIsCaseInsensitive() {
+        val mapping = Pointers.fnDiagonalDefaultMapping("FN", SwipeDirection.NE)
+        assertWithMessage("FN (uppercase) should also default to LAYOUT_LANG_TOGGLE")
+            .that(mapping).isNotNull()
+    }
+
     // ------------------------------------------------------------------ reflection
 
     private fun Any.setField(name: String, value: Any?) {

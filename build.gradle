@@ -1064,6 +1064,12 @@ tasks.register('runMockTests', JavaExec) {
     // the default at every fuzzed direction bin; cold-load independence from swipe typing;
     // the short/long boundary is authoritative (BY-DESIGN pin for #83).
     'tribixbite.cleverkeys.PointersShortSwipeCustomOverrideTest',
+    // TG-CKKEYS-20261014: Fn diagonal swipe ALWAYS → LAYOUT_LANG_TOGGLE regardless of
+    // race condition / empty mapping cache. Unit tests for the pure decision function
+    // (fnDiagonalDefaultMapping) + integration tests driving the real onTouchUp path
+    // with an empty cache (the race state).
+    'tribixbite.cleverkeys.LayoutLangToggleTest',
+    'tribixbite.cleverkeys.PointersFnDiagonalToggleTest',
     // TG-TZKEYS-20260930 A1: short tap on Fn emits switch_forward (layout cycle, no
     // system picker); long press keeps the lockPointer path; Ctrl latch untouched.
     'tribixbite.cleverkeys.PointersFnTapToggleTest',

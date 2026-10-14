@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import tribixbite.cleverkeys.customization.AvailableCommand
 import tribixbite.cleverkeys.customization.ShortSwipeCustomizationManager
 import tribixbite.cleverkeys.customization.ShortSwipeMapping
 import tribixbite.cleverkeys.customization.SwipeDirection
@@ -494,6 +495,19 @@ class Pointers(
                         if (customMapping != null) {
                             // Custom mappings work even with shift active - this is intentional
                             executeCustomShortSwipe(ptr, customMapping)
+                            return
+                        }
+
+                        // TG-CKKEYS-20261014: Fn diagonal ALWAYS → LAYOUT_LANG_TOGGLE.
+                        // seedDefaultMappings fills fn+NE/SE/SW/NW → LAYOUT_LANG_TOGGLE
+                        // asynchronously (scope.launch in init), so a swipe before the seed
+                        // completes finds an empty cache and would fall through to the
+                        // built-in sublabel (NE = change_method → system IME picker). This
+                        // static fallback intercepts the cache-miss BEFORE resolveNearestShortSwipe
+                        // so the toggle fires regardless of race/cache state.
+                        val fnDefault = fnDiagonalDefaultMapping(keyCode, swipeDir)
+                        if (fnDefault != null) {
+                            executeCustomShortSwipe(ptr, fnDefault)
                             return
                         }
 
@@ -2149,6 +2163,39 @@ class Pointers(
         @JvmStatic
         fun directionToSwipeDirection(direction: Int): SwipeDirection {
             return DIRECTION_TO_SWIPE_DIRECTION[direction and 0x0F]
+        }
+
+        /** Diagonal SwipeDirections that the Fn key always maps to LAYOUT_LANG_TOGGLE. */
+        private val DIAGONAL_DIRECTIONS = setOf(
+            SwipeDirection.NE, SwipeDirection.SE, SwipeDirection.SW, SwipeDirection.NW
+        )
+
+        /**
+         * TG-CKKEYS-20261014: Static fallback mapping for Fn diagonal swipes.
+         *
+         * When [ShortSwipeCustomizationManager.getMapping] returns null for an Fn diagonal
+         * (race condition: the async seed in [Pointers] init hasn't completed yet), this
+         * function provides a synthetic [ShortSwipeMapping] with [AvailableCommand.LAYOUT_LANG_TOGGLE]
+         * so the gesture NEVER falls through to the built-in sublabel (NE = change_method
+         * → system IME picker).
+         *
+         * Cardinal directions (N/E/S/W) and non-Fn keys return null — they keep their
+         * built-in sublabel behavior.
+         *
+         * @param keyCode The key identifier as returned by [KeyValue.getString] (e.g. "fn")
+         * @param swipeDir The 8-direction SwipeDirection computed from the gesture vector
+         * @return A LAYOUT_LANG_TOGGLE mapping for Fn+diagonal, or null for any other case
+         */
+        @JvmStatic
+        fun fnDiagonalDefaultMapping(keyCode: String, swipeDir: SwipeDirection): ShortSwipeMapping? {
+            if (keyCode.lowercase() != "fn") return null
+            if (swipeDir !in DIAGONAL_DIRECTIONS) return null
+            return ShortSwipeMapping.command(
+                keyCode = "fn",
+                direction = swipeDir,
+                displayText = "⇄",
+                command = AvailableCommand.LAYOUT_LANG_TOGGLE
+            )
         }
     }
 }
