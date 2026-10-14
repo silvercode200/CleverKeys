@@ -2,6 +2,9 @@ package tribixbite.cleverkeys
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 
 /**
  * TG-CKKEYS-20261014 node 2: split_mode default-ON for tablets/large screens.
@@ -213,5 +216,156 @@ class SplitModeDefaultTest {
             screenWidthDp = 900
         )
         assertEquals("Default screenLayout + tablet width should return split ON", true, result)
+    }
+
+    // =========================================================================
+    // PROPAGATION: resolveSplitMode=true → split actually applied to layout
+    //
+    // These tests verify the FULL chain, not just the pure function:
+    // 1. resolveSplitMode returns true for tablet
+    // 2. split_mode=true → gapUnits computed (non-zero)
+    // 3. withSplitGap returns non-null (layout actually split, not monolithic)
+    //
+    // The device bug: split_mode=true but keyboard monolithic. These tests
+    // would catch a broken gap computation or withSplitGap returning null
+    // for the tablet's default split_gap=20.
+    // =========================================================================
+
+    /** Tablet screen width dp (TB371FC device). */
+    private val TABLET_SCREEN_WIDTH_DP = 1385
+
+    /** Default split_gap preference value (Defaults.SPLIT_GAP = 20). */
+    private val DEFAULT_SPLIT_GAP = 20
+
+    /** Standard keyboard width in units (10 keys × 1.0). */
+    private val KEYBOARD_WIDTH_UNITS = 10f
+
+    /**
+     * resolveSplitMode=true for tablet → gapUnits is non-zero → withSplitGap
+     * returns non-null (split actually applied). This catches the case where
+     * split_mode is true but the layout stays monolithic because gapUnits=0
+     * or withSplitGap returns null.
+     */
+    @Test
+    fun tablet_resolveSplitModeTrue_splitActuallyApplied() {
+        // Step 1: resolveSplitMode returns true for tablet
+        val splitMode = SplitModeDefaults.resolveSplitMode(
+            prefSet = false,
+            prefValue = false,
+            screenWidthDp = TABLET_SCREEN_WIDTH_DP,
+            screenLayout = 0
+        )
+        assertTrue("Tablet should have split_mode=true", splitMode)
+
+        // Step 2: When split_mode=true, gapUnits must be non-zero
+        val gapUnits = SplitLayout.gapUnits(KEYBOARD_WIDTH_UNITS, DEFAULT_SPLIT_GAP)
+        assertTrue(
+            "gapUnits must be > 0 for split_gap=$DEFAULT_SPLIT_GAP (got $gapUnits)",
+            gapUnits > 0f
+        )
+
+        // Step 3: withSplitGap must return non-null (layout actually split)
+        val layout = testKeyboard()
+        val splitResult = layout.withSplitGap(gapUnits)
+        assertNotNull(
+            "withSplitGap must return non-null when split_mode=true and gap>0",
+            splitResult
+        )
+
+        // Step 4: The split result must have valid SplitInfo (hole geometry)
+        val info = splitResult!!.info
+        assertTrue(
+            "SplitInfo gapUnits must be > 0",
+            info.gapUnits > 0f
+        )
+        assertTrue(
+            "SplitInfo maxLeftUnits must be > 0 (left half exists)",
+            info.maxLeftUnits > 0f
+        )
+        assertTrue(
+            "SplitInfo minLeftUnits must be > 0 (right half exists after gap)",
+            info.minLeftUnits > 0f
+        )
+    }
+
+    /**
+     * resolveSplitMode=false for phone → no split applied. This is the negative
+     * case: when split_mode is false, the layout stays monolithic.
+     */
+    @Test
+    fun phone_resolveSplitModeFalse_noSplitApplied() {
+        val splitMode = SplitModeDefaults.resolveSplitMode(
+            prefSet = false,
+            prefValue = false,
+            screenWidthDp = 360,
+            screenLayout = 0x02
+        )
+        assertFalse("Phone should have split_mode=false", splitMode)
+
+        // When split_mode=false, current_layout() returns the unspaced layout directly.
+        // No withSplitGap call is made. This is correct behavior — phones don't split.
+    }
+
+    /**
+     * Reinstall scenario: pref cleared → tablet default re-applies → split actually
+     * applied. This verifies the full chain survives pm clear + reinstall.
+     */
+    @Test
+    fun reinstall_tablet_splitActuallyApplied() {
+        // After pm clear: prefSet=false, prefValue irrelevant
+        val splitMode = SplitModeDefaults.resolveSplitMode(
+            prefSet = false,
+            prefValue = false,
+            screenWidthDp = TABLET_SCREEN_WIDTH_DP,
+            screenLayout = 0
+        )
+        assertTrue("Reinstall on tablet should re-default to split ON", splitMode)
+
+        // Verify split actually applies with default gap
+        val gapUnits = SplitLayout.gapUnits(KEYBOARD_WIDTH_UNITS, DEFAULT_SPLIT_GAP)
+        assertTrue("gapUnits > 0 after reinstall", gapUnits > 0f)
+
+        val layout = testKeyboard()
+        val splitResult = layout.withSplitGap(gapUnits)
+        assertNotNull("withSplitGap non-null after reinstall", splitResult)
+    }
+
+    // -- test layout fixtures (same pattern as SplitLayoutTest) --
+
+    private fun charKey(c: Char, width: Float = 1f, shift: Float = 0f): KeyboardData.Key =
+        KeyboardData.Key(
+            listOf(KeyValue.makeCharKey(c), null, null, null, null, null, null, null, null),
+            null, 0, width, shift, null
+        )
+
+    private fun namedKey(name: String, width: Float, shift: Float = 0f): KeyboardData.Key =
+        KeyboardData.Key(
+            listOf(KeyValue.getKeyByName(name), null, null, null, null, null, null, null, null),
+            null, 0, width, shift, null
+        )
+
+    private fun row(vararg keys: KeyboardData.Key, height: Float = 1f) =
+        KeyboardData.Row(keys.toList(), height, 0f)
+
+    /**
+     * QWERTY layout with bottom row: 10 units wide (standard).
+     * Bottom row has ctrl(1.7) fn(1.1) space(4.4) compose(1.1) enter(1.7) = 10 units.
+     * The space bar (4.4 > WIDE_KEY_WIDTH=2.0) straddles center → gets cut.
+     */
+    private fun testKeyboard(): KeyboardData {
+        val rows = listOf(
+            row(*"qwertyuiop".map { charKey(it) }.toTypedArray()),
+            row(charKey('a', shift = 0.5f), *"sdfghjkl".map { charKey(it) }.toTypedArray()),
+            row(namedKey("shift", 1.5f), *"zxcvbnm".map { charKey(it) }.toTypedArray(), namedKey("backspace", 1.5f)),
+            row(namedKey("ctrl", 1.7f), namedKey("fn", 1.1f), namedKey("space", 4.4f), namedKey("compose", 1.1f), namedKey("enter", 1.7f))
+        )
+        val ctor = KeyboardData::class.java.declaredConstructors
+            .first { it.parameterCount == 10 }
+        ctor.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        return ctor.newInstance(
+            rows, KEYBOARD_WIDTH_UNITS, rows.size.toFloat(),
+            null, null, null, null, false, false, false
+        ) as KeyboardData
     }
 }

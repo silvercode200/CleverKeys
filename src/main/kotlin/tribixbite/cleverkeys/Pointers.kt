@@ -1009,31 +1009,47 @@ class Pointers(
             val a = atan2(dy, dx) + Math.PI
             val direction = ((a * 8 / Math.PI).toInt() + 12) % 16
 
-            val subkeyValue = getNearestKeyAtDirection(ptr, direction)
-            if (subkeyValue != null) {
-                when (subkeyValue.getKind()) {
-                    KeyValue.Kind.Slider -> {
-                        // Slider key detected - enter sliding mode instead of swipe typing
-                        if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Pointers", "Slider detected at direction $direction, starting sliding mode")
-                        ptr.gesture = Gesture(direction, snap)
-                        ptr.value = subkeyValue
-                        ptr.flags = pointer_flags_of_kv(subkeyValue, snap)
-                        startSliding(ptr, x, adjustedY, dx, dy, subkeyValue)
-                        _handler.onPointerDown(subkeyValue, true)
-                        return
-                    }
-                    KeyValue.Kind.Event -> {
-                        // Event key detected (e.g., switch_forward, switch_backward)
-                        // Trigger immediately and prevent swipe typing from intercepting
-                        if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Pointers", "Event key detected at direction $direction: ${subkeyValue.getEvent()}")
-                        ptr.gesture = Gesture(direction, snap)
-                        ptr.value = subkeyValue
-                        ptr.flags = pointer_flags_of_kv(subkeyValue, snap)
-                        _handler.onPointerDown(subkeyValue, true)
-                        return
-                    }
-                    else -> {
-                        // Other key types (including Keyevent nav keys) - let short gesture handling in onTouchUp handle them
+            // TG-CKKEYS-DEVICEFIX: Fn+diagonal must NOT be resolved by
+            // getNearestKeyAtDirection during onTouchMove. The Fn key has a
+            // built-in change_method subkey at NE (Event-kind) which would
+            // set ptr.gesture here and activate the system IME picker. Then
+            // onTouchUp would see ptr.gesture!=null and SKIP the gesture block
+            // where fnDiagonalDefaultMapping maps Fn+diagonal → LAYOUT_LANG_TOGGLE.
+            // By skipping the subkey check for Fn+diagonal, ptr.gesture stays null
+            // and onTouchUp's gesture block fires fnDiagonalDefaultMapping correctly.
+            // Cardinal directions (N/E/S/W) are NOT affected — they keep their
+            // built-in sublabel behavior (Event keys at cardinal directions still fire).
+            val fnKeyCode = ptr.key?.keys?.get(0)?.getString() ?: ""
+            val fnSwipeDir = directionToSwipeDirection(direction)
+            val isFnDiagonal = fnDiagonalDefaultMapping(fnKeyCode, fnSwipeDir) != null
+
+            if (!isFnDiagonal) {
+                val subkeyValue = getNearestKeyAtDirection(ptr, direction)
+                if (subkeyValue != null) {
+                    when (subkeyValue.getKind()) {
+                        KeyValue.Kind.Slider -> {
+                            // Slider key detected - enter sliding mode instead of swipe typing
+                            if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Pointers", "Slider detected at direction $direction, starting sliding mode")
+                            ptr.gesture = Gesture(direction, snap)
+                            ptr.value = subkeyValue
+                            ptr.flags = pointer_flags_of_kv(subkeyValue, snap)
+                            startSliding(ptr, x, adjustedY, dx, dy, subkeyValue)
+                            _handler.onPointerDown(subkeyValue, true)
+                            return
+                        }
+                        KeyValue.Kind.Event -> {
+                            // Event key detected (e.g., switch_forward, switch_backward)
+                            // Trigger immediately and prevent swipe typing from intercepting
+                            if (BuildConfig.ENABLE_VERBOSE_LOGGING) Log.d("Pointers", "Event key detected at direction $direction: ${subkeyValue.getEvent()}")
+                            ptr.gesture = Gesture(direction, snap)
+                            ptr.value = subkeyValue
+                            ptr.flags = pointer_flags_of_kv(subkeyValue, snap)
+                            _handler.onPointerDown(subkeyValue, true)
+                            return
+                        }
+                        else -> {
+                            // Other key types (including Keyevent nav keys) - let short gesture handling in onTouchUp handle them
+                        }
                     }
                 }
             }

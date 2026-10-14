@@ -2,6 +2,7 @@ package tribixbite.cleverkeys
 
 import android.content.Context
 import android.text.InputType
+import android.util.Log
 import android.util.LruCache
 import android.view.inputmethod.EditorInfo
 
@@ -95,12 +96,32 @@ class LayoutManager(
     /**
      * Layout currently visible before it has been modified.
      *
+     * TG-CKKEYS-DEPLOY-20261014: [config.refresh()] (triggered synchronously by
+     * `SharedPreferences.apply()` in [Config.set_current_layout] or by any other pref
+     * write such as `pref_primary_language` in `toggleRuEnLayout`) reloads
+     * `config.layouts` from prefs via `LayoutsPreference.load_from_preferences()`.
+     * This drops in-memory auto-seeded layouts (`QWERTY (US)`, `ЙЦУКЕН (Русский)`)
+     * that [ensureDefaultRuEnLayouts] added but never persisted to prefs.
+     *
+     * Without re-seeding, `layout_i` exceeds the shrunken array size, gets clamped to 0,
+     * `layouts[0]` is null (SystemLayout), and the result falls back to `localeTextLayout`
+     * — always the Russian layout on this device — making the RU↔EN toggle unidirectional
+     * and causing `PreferenceUIUpdateHandler.updateKeyboardLayout()` to overwrite the
+     * correct layout set by `LayoutBridge.toggleRuEnWithFallback()` with `localeTextLayout`.
+     *
+     * Fix: re-seed when the index is out of bounds, before falling back.
+     *
      * @return Unmodified current layout
      */
     fun current_layout_unmodified(): KeyboardData {
         currentSpecialLayout?.let { return it }
 
         var layout_i = config.get_current_layout()
+        // Re-seed auto-seeded layouts that config.refresh() dropped from config.layouts.
+        // Idempotent: if layouts are already present, ensureDefaultRuEnLayouts() is a no-op.
+        if (layout_i >= config.layouts.size) {
+            ensureDefaultRuEnLayouts()
+        }
         if (layout_i >= config.layouts.size) {
             layout_i = 0
         }
@@ -127,11 +148,30 @@ class LayoutManager(
     /**
      * Sets the current text layout index and clears special layout.
      *
+     * TG-CKKEYS-DEPLOY-20261014: [config.set_current_layout] writes to SharedPreferences
+     * via `.apply()`, which fires `onSharedPreferenceChanged` **synchronously** on the
+     * same thread. The listener chain (`ConfigurationManager` → `config.refresh()`) reloads
+     * `config.layouts` from prefs via `LayoutsPreference.load_from_preferences()` — this
+     * drops in-memory auto-seeded layouts (`QWERTY (US)`, `ЙЦУКЕН (Русский)`) that
+     * [ensureDefaultRuEnLayouts] added but never persisted to prefs.
+     *
+     * Without re-seeding, `current_layout()` reads `get_current_layout() == layoutIndex`,
+     * but `layouts.size` has shrunk (e.g. from 3 to 1), so the index is clamped to 0,
+     * `layouts[0]` is null (SystemLayout), and the result falls back to `localeTextLayout`
+     * — which is always the Russian layout on this device. This made the RU↔EN toggle
+     * unidirectional: every swipe returned ЙЦУКЕН regardless of the computed target.
+     *
+     * Fix: call [ensureDefaultRuEnLayouts] after `set_current_layout` to restore the
+     * auto-seeded entries before `current_layout()` reads them.
+     *
      * @param layoutIndex Index of text layout in config.layouts
      * @return The new current layout (for updating view)
      */
     fun setTextLayout(layoutIndex: Int): KeyboardData {
         config.set_current_layout(layoutIndex)
+        // Re-seed auto-seeded layouts that config.refresh() (triggered synchronously
+        // by set_current_layout's .apply()) dropped from config.layouts.
+        ensureDefaultRuEnLayouts()
         currentSpecialLayout = null
         return current_layout()
     }
@@ -174,6 +214,10 @@ class LayoutManager(
             nameA -> indexB
             nameB -> indexA
             else -> indexA
+        }
+
+        if (BuildConfig.ENABLE_VERBOSE_LOGGING) {
+            Log.d("LayoutManager", "toggleLayoutByName: currentIdx=$currentIdx currentName='$currentName' → targetIndex=$targetIndex")
         }
 
         return setTextLayout(targetIndex)

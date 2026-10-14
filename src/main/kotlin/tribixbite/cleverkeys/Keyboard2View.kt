@@ -486,6 +486,11 @@ class Keyboard2View @JvmOverloads constructor(
     }
 
     fun setKeyboard(kw: KeyboardData) {
+        if (BuildConfig.ENABLE_VERBOSE_LOGGING) {
+            val trace = Thread.currentThread().stackTrace
+            val caller = trace.getOrNull(3)?.let { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" } ?: "unknown"
+            Log.d("Keyboard2View", "setKeyboard: name='${kw.name}' script='${kw.script}' caller=$caller")
+        }
         // T6 split: a different layout than the one the split info belongs to
         // makes that info stale — drop it; the service re-pushes fresh info
         // right after when it delivers a split layout.

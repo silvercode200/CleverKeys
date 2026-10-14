@@ -5,8 +5,12 @@ import android.util.Log
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
+import io.mockk.Runs
+import io.mockk.spyk
 import io.mockk.unmockkAll
 import org.junit.After
 import org.junit.Before
@@ -65,6 +69,17 @@ class LayoutLangToggleTest {
         mockkStatic(LayoutModifier::class)
         every { LayoutModifier.modify_layout(any()) } answers { firstArg() }
 
+        // TG-CKKEYS-DEPLOY-20261014: setTextLayout now calls ensureDefaultRuEnLayouts()
+        // which calls loadLayout() → KeyboardData.load(). On the JVM test classpath, the
+        // android.jar stub of Resources.getXml throws RuntimeException("Stub!"). We stub
+        // Logs.exn to suppress the error logging; loadLayout returns null (caught by the
+        // ?.let in ensureDefaultRuEnLayouts, making it a no-op when layouts are already set).
+        // Tests that need real re-seeding use layoutManagerWithMockLoad which spies loadLayout.
+        mockkObject(Logs)
+        every { Logs.exn(any(), any()) } just Runs
+        mockkObject(Log)
+        every { Log.e(any(), any(), any()) } returns 0
+
         currentLayoutIndex = 0
         config = mockk(relaxed = true)
         every { config.get_current_layout() } answers { currentLayoutIndex }
@@ -81,6 +96,11 @@ class LayoutLangToggleTest {
         val lm = objenesis.newInstance(LayoutManager::class.java)
         lm.setField("config", config)
         lm.setField("localeTextLayout", locale)
+        // TG-CKKEYS-DEPLOY-20261014: setTextLayout calls ensureDefaultRuEnLayouts() which
+        // calls loadLayout() → keyboardDataCache.get(). Objenesis skips the constructor
+        // (which initializes the cache), so set it manually.
+        lm.setField("keyboardDataCache", android.util.LruCache<Int, KeyboardData>(10))
+        lm.setField("context", mockk<Context>(relaxed = true))
         return lm
     }
 
@@ -402,6 +422,113 @@ class LayoutLangToggleTest {
         val mapping = Pointers.fnDiagonalDefaultMapping("FN", SwipeDirection.NE)
         assertWithMessage("FN (uppercase) should also default to LAYOUT_LANG_TOGGLE")
             .that(mapping).isNotNull()
+    }
+
+    // ==================== TG-CKKEYS-DEPLOY-20261014: refresh drops auto-seeded layouts ====================
+    //
+    // config.set_current_layout() writes to SharedPreferences via .apply(), which fires
+    // onSharedPreferenceChanged synchronously → ConfigurationManager → config.refresh()
+    // → layouts = LayoutsPreference.load_from_preferences() — drops in-memory auto-seeded
+    // layouts (QWERTY, ЙЦУКЕН) that ensureDefaultRuEnLayouts() added but never persisted.
+    //
+    // Fix: setTextLayout calls ensureDefaultRuEnLayouts() after set_current_layout,
+    // and current_layout_unmodified calls it when index >= layouts.size.
+
+    /**
+     * RED→GREEN: setTextLayout re-seeds layouts after config.refresh() drops them.
+     *
+     * Reproduces the unidirectional toggle bug: set_current_layout triggers a listener
+     * that shrinks config.layouts from 3 to 1 (only SystemLayout remains). Without the
+     * fix, current_layout() falls back to localeTextLayout (always Russian on device).
+     * With the fix, ensureDefaultRuEnLayouts() re-seeds the dropped layouts.
+     */
+    @Test
+    fun setTextLayoutReSeedsAfterRefreshDropsLayouts() {
+        val enLayout = layoutWithScript("QWERTY (US)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Русский)", "cyrillic")
+
+        // Start: 3 layouts [SystemLayout(null), QWERTY, ЙЦУКЕН], currentIdx=0
+        val lm = layoutManagerWithMockLoad(
+            locale = enLayout,
+            layouts = listOf(null, enLayout, ruLayout),
+            enLayout = enLayout,
+            ruLayout = ruLayout
+        )
+        currentLayoutIndex = 0
+
+        // Simulate: set_current_layout triggers config.refresh() which reloads
+        // layouts from prefs, dropping the auto-seeded QWERTY and ЙЦУКЕН.
+        every { config.set_current_layout(any()) } answers {
+            currentLayoutIndex = firstArg()
+            config.layouts = listOf(null)  // refresh dropped auto-seeded layouts
+        }
+
+        // toggleLayoutByName: currentIdx=0 (null/SystemLayout) → targetIndex=1 (QWERTY)
+        val result = lm.toggleLayoutByName("QWERTY (US)", "ЙЦУКЕН (Русский)")
+
+        assertWithMessage("should switch to EN layout, not fall back to localeTextLayout")
+            .that(result).isSameInstanceAs(enLayout)
+        assertWithMessage("current layout index should be 1 (EN)")
+            .that(currentLayoutIndex).isEqualTo(1)
+    }
+
+    /**
+     * RED→GREEN: current_layout_unmodified re-seeds layouts when index is out of bounds.
+     *
+     * After config.refresh() shrinks layouts, the saved index exceeds the array size.
+     * Without the fix, index is clamped to 0 → null → localeTextLayout (always Russian).
+     * With the fix, ensureDefaultRuEnLayouts() re-seeds before the fallback.
+     */
+    @Test
+    fun currentLayoutUnmodifiedReSeedsWhenIndexOutOfBounds() {
+        val enLayout = layoutWithScript("QWERTY (US)", "latin")
+        val ruLayout = layoutWithScript("ЙЦУКЕН (Русский)", "cyrillic")
+
+        // Simulate post-refresh state: layouts shrunk to [null], but index=1 (was QWERTY)
+        val lm = layoutManagerWithMockLoad(
+            locale = ruLayout,  // localeTextLayout is Russian (as on device)
+            layouts = listOf(null),
+            enLayout = enLayout,
+            ruLayout = ruLayout
+        )
+        currentLayoutIndex = 1  // index from before refresh, now out of bounds
+
+        val result = lm.current_layout_unmodified()
+
+        assertWithMessage("should return EN layout (index 1 after re-seed), not localeTextLayout")
+            .that(result).isSameInstanceAs(enLayout)
+    }
+
+    /**
+     * Creates a LayoutManager with a mocked loadLayout for ensureDefaultRuEnLayouts re-seeding.
+     *
+     * Uses spyk on an Objenesis instance: non-mocked methods delegate to the original,
+     * loadLayout is mocked to return test layouts (latin first, then cyrillic — matching
+     * the order ensureDefaultRuEnLayouts loads them).
+     */
+    private fun layoutManagerWithMockLoad(
+        locale: KeyboardData,
+        layouts: List<KeyboardData?>,
+        enLayout: KeyboardData,
+        ruLayout: KeyboardData
+    ): LayoutManager {
+        config.layouts = layouts
+        val base = objenesis.newInstance(LayoutManager::class.java)
+        base.setField("config", config)
+        base.setField("localeTextLayout", locale)
+        base.setField("keyboardDataCache", android.util.LruCache<Int, KeyboardData>(10))
+        val lm = spyk(base)
+        // ensureDefaultRuEnLayouts loads latin first, then cyrillic
+        var loadCallCount = 0
+        every { lm.loadLayout(any()) } answers {
+            loadCallCount++
+            when (loadCallCount) {
+                1 -> enLayout   // latin (QWERTY)
+                2 -> ruLayout   // cyrillic (ЙЦУКЕН)
+                else -> null
+            }
+        }
+        return lm
     }
 
     // ------------------------------------------------------------------ reflection

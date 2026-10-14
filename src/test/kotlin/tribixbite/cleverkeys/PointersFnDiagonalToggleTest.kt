@@ -135,6 +135,32 @@ class PointersFnDiagonalToggleTest {
         pointers.onTouchUp(0)
     }
 
+    /**
+     * Simulate the FULL touch pipeline: onTouchMove (finger moves) → onTouchUp (release).
+     *
+     * This is the REAL device flow: onTouchMove fires first and may pre-create
+     * ptr.gesture via Event-key detection (change_method at NE → IME picker).
+     * If ptr.gesture is set during onTouchMove, onTouchUp SKIPS the gesture block
+     * and fnDiagonalDefaultMapping never fires — the bug we're fixing.
+     *
+     * dist must be >= swipe_dist_px (100) for the subkey check to trigger in onTouchMove.
+     * dx=60, dy=-60 → dist=120 >= 100 → subkey check fires → Event key found at NE.
+     */
+    private fun flickThroughPipeline(
+        key: KeyboardData.Key,
+        dx: Float,
+        dy: Float,
+        snap: ConfigSnapshot,
+        flags: Int = 0
+    ) {
+        val ptr = Pointers.Pointer(0, key, key.keys[0], 100f, 100f, noMods(), flags, snap)
+        ptrs.add(ptr)
+        // Simulate finger movement to the target position
+        pointers.onTouchMove(100f + dx, 100f + dy, 0)
+        // Simulate finger release
+        pointers.onTouchUp(0)
+    }
+
     // =========================================================================
     // Fn diagonal → LAYOUT_LANG_TOGGLE (not built-in sublabel / system picker)
     // =========================================================================
@@ -223,6 +249,127 @@ class PointersFnDiagonalToggleTest {
         assertTrue(
             "fn:N built-in sublabel 'switch_gif' should fire normally",
             handler.downs.any { it?.getString() == "switch_gif" }
+        )
+    }
+
+    // =========================================================================
+    // FULL PIPELINE: onTouchMove → onTouchUp (real device flow)
+    //
+    // These tests reproduce the device bug: onTouchMove pre-creates ptr.gesture
+    // via Event-key detection (change_method at NE), so onTouchUp SKIPS the
+    // gesture block and fnDiagonalDefaultMapping never fires.
+    // Fix: onTouchMove must skip Event-key activation for Fn+diagonal.
+    // =========================================================================
+
+    /**
+     * NE diagonal Fn swipe through FULL pipeline (onTouchMove→onTouchUp) →
+     * LAYOUT_LANG_TOGGLE, NOT change_method picker.
+     *
+     * RED before fix: onTouchMove finds change_method (Event) at NE direction,
+     * sets ptr.gesture, calls onPointerDown(change_method). onTouchUp sees
+     * ptr.gesture!=null → SKIPS gesture block → fnDiagonalDefaultMapping never fires.
+     */
+    @Test
+    fun fnNeDiagonalPipeline_routesToToggleNotPicker() {
+        // NE: dx=60, dy=-60 (up-right), dist=120 >= swipe_dist_px(100) → subkey check fires
+        flickThroughPipeline(fnKey, dx = 60f, dy = -60f, snap = snap())
+
+        assertEquals(
+            "fn:NE diagonal through pipeline should fire exactly one custom swipe",
+            1, handler.customs.size
+        )
+        assertEquals(
+            "fn:NE pipeline custom swipe should be LAYOUT_LANG_TOGGLE",
+            AvailableCommand.LAYOUT_LANG_TOGGLE.name,
+            handler.customs.single().actionValue
+        )
+        assertTrue(
+            "built-in sublabel 'change_method' must NOT be emitted during pipeline",
+            handler.downs.none { it?.getString() == "change_method" }
+        )
+    }
+
+    /**
+     * SE diagonal Fn swipe through FULL pipeline → LAYOUT_LANG_TOGGLE, NOT config.
+     */
+    @Test
+    fun fnSeDiagonalPipeline_routesToToggleNotPicker() {
+        // SE: dx=60, dy=60 (down-right), dist=120
+        flickThroughPipeline(fnKey, dx = 60f, dy = 60f, snap = snap())
+
+        assertEquals(
+            "fn:SE diagonal through pipeline should fire exactly one custom swipe",
+            1, handler.customs.size
+        )
+        assertEquals(
+            "fn:SE pipeline custom swipe should be LAYOUT_LANG_TOGGLE",
+            AvailableCommand.LAYOUT_LANG_TOGGLE.name,
+            handler.customs.single().actionValue
+        )
+    }
+
+    /**
+     * SW diagonal Fn swipe through FULL pipeline → LAYOUT_LANG_TOGGLE, NOT switch_emoji.
+     */
+    @Test
+    fun fnSwDiagonalPipeline_routesToToggleNotPicker() {
+        // SW: dx=-60, dy=60 (down-left), dist=120
+        flickThroughPipeline(fnKey, dx = -60f, dy = 60f, snap = snap())
+
+        assertEquals(
+            "fn:SW diagonal through pipeline should fire exactly one custom swipe",
+            1, handler.customs.size
+        )
+        assertEquals(
+            "fn:SW pipeline custom swipe should be LAYOUT_LANG_TOGGLE",
+            AvailableCommand.LAYOUT_LANG_TOGGLE.name,
+            handler.customs.single().actionValue
+        )
+    }
+
+    /**
+     * NW diagonal Fn swipe through FULL pipeline → LAYOUT_LANG_TOGGLE, NOT loc alt.
+     */
+    @Test
+    fun fnNwDiagonalPipeline_routesToToggleNotPicker() {
+        // NW: dx=-60, dy=-60 (up-left), dist=120
+        flickThroughPipeline(fnKey, dx = -60f, dy = -60f, snap = snap())
+
+        assertEquals(
+            "fn:NW diagonal through pipeline should fire exactly one custom swipe",
+            1, handler.customs.size
+        )
+        assertEquals(
+            "fn:NW pipeline custom swipe should be LAYOUT_LANG_TOGGLE",
+            AvailableCommand.LAYOUT_LANG_TOGGLE.name,
+            handler.customs.single().actionValue
+        )
+    }
+
+    /**
+     * Cardinal N swipe on Fn through FULL pipeline → built-in sublabel (switch_gif),
+     * NOT toggle. The fix only skips Event keys for Fn+DIAGONAL; cardinal directions
+     * with non-Event subkeys keep their built-in behavior.
+     *
+     * switch_gif at N is an Event key too — this test verifies the fix doesn't
+     * break cardinal Event keys. With dx=0, dy=-120: dist=120, direction=0 (N),
+     * getNearestKeyAtDirection finds switch_gif (Event). The fix should NOT skip
+     * this because N is cardinal, not diagonal.
+     */
+    @Test
+    fun fnCardinalNPipeline_eventKeyStillFires() {
+        // N: dx=0, dy=-120 (straight up), dist=120 → direction 0 → SwipeDirection.N
+        flickThroughPipeline(fnKey, dx = 0f, dy = -120f, snap = snap())
+
+        // switch_gif is an Event key at N — it should still fire during onTouchMove
+        assertTrue(
+            "fn:N (cardinal) Event key 'switch_gif' should fire through pipeline",
+            handler.downs.any { it?.getString() == "switch_gif" }
+        )
+        // toggle should NOT fire for cardinal directions
+        assertEquals(
+            "fn:N (cardinal) should NOT fire a custom swipe (toggle is diagonal-only)",
+            0, handler.customs.size
         )
     }
 

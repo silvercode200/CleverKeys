@@ -1,0 +1,8 @@
+10-10 14:18:49.390 26953 26953 D Pointers: === onTouchUp START: ptr_value=[KeyValue Modifier+105906176+30 "Fn"], flags=0x1, pointerId=0 ===
+10-10 14:18:49.390 26953 26953 D Pointers: SHORT_SWIPE: key=[KeyValue Modifier+105906176+30 "Fn"] dx=78.4 dy=-78.4 dist=110.9 angle=135.0° dir=1→idx=2(ne)
+10-10 14:18:49.390 26953 26953 D Pointers: CUSTOM_SHORT_SWIPE: Found custom mapping for fn:NE -> COMMAND:LAYOUT_LANG_TOGGLE
+10-10 14:18:49.391 26953 26953 D Keyboard2View: Executing custom short swipe: fn:NE -> COMMAND:LAYOUT_LANG_TOGGLE
+10-10 14:18:49.391 26953 26953 D ShortSwipeExecutor: LAYOUT_LANG_TOGGLE command - requires keyboard service handling
+10-10 14:18:49.391 26953 26953 D ShortSwipeExecutor: Executed COMMAND action: LAYOUT_LANG_TOGGLE -> false
+10-10 14:18:49.391 26953 26953 D Keyboard2View: toggleRuEnLayout() called
+10-10 14:18:49.397 26953 26953 D SuggestionBar: showTemporaryMessage: 'Русский' for 1500ms, clearAfter=false

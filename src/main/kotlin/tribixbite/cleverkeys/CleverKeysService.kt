@@ -100,6 +100,16 @@ class CleverKeysService : InputMethodService(),
     private var _splitAppliedGap = -1
     private var _splitAppliedSpacing = -1
 
+    // TG-CKKEYS-DEVICEFIX: Config is created in onCreate() via Config.initGlobalConfig(),
+    // which calls Config.refresh() to compute split_mode from displayMetrics. On some
+    // devices, displayMetrics.widthPixels may be 0 during early onCreate (before the
+    // window is attached), causing resolveSplitMode to see screenWidthDp=0 and return
+    // false — split_mode stays false forever because _config is already non-null and
+    // onStartInputView skips refresh_config(). This flag forces ONE config refresh on
+    // the first onStartInputView, ensuring displayMetrics are valid and split_mode is
+    // correctly resolved for tablets/large screens.
+    private var _configRefreshedOnFirstInput = false
+
     // Track the theme ID used to create the current keyboard view (for stale view detection)
     private var _currentViewThemeId: Int = 0
 
@@ -724,6 +734,23 @@ class CleverKeysService : InputMethodService(),
         // We only do initial config load here if config is completely null (shouldn't happen normally)
         if (_config == null) {
             refresh_config()
+        }
+
+        // TG-CKKEYS-DEVICEFIX: Force ONE config refresh on the first onStartInputView.
+        // Config was created in onCreate() via Config.initGlobalConfig(), which calls
+        // Config.refresh() to compute split_mode from displayMetrics. On some devices,
+        // displayMetrics.widthPixels may be 0 during early onCreate (before the window
+        // is fully attached), causing resolveSplitMode to see screenWidthDp=0 and return
+        // false for tablets — split_mode stays false and the keyboard renders monolithic.
+        // By the time onStartInputView fires, displayMetrics are valid, so this forced
+        // refresh ensures split_mode is correctly resolved. The _configRefreshedOnFirstInput
+        // flag prevents redundant refreshes on subsequent input views.
+        if (!_configRefreshedOnFirstInput) {
+            _configRefreshedOnFirstInput = true
+            refresh_config()
+            // applyLayoutToView() is called at line ~806 (end of onStartInputView),
+            // AFTER _layoutBridge is initialized via refreshSubtypeImm(). So we don't
+            // need to call it here — we just need split_mode to be correct by then.
         }
 
         // ARC-006: the per-field `clearLanguageHistory()` call that stood here was deleted
