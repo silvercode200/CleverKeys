@@ -984,6 +984,10 @@ tasks.register('runPureTests', JavaExec) {
     // parsed a different format. Pins their schema against the real files plus the
     // asset-wins/hardcoded-fills-gaps merge that makes them the seed's source of truth.
     'tribixbite.cleverkeys.StaticBigramSeedTest',
+    // TG-STABRENDER-20261013 node 3B: canonical label verification — layout keys
+    // resolve to exactly their expected characters; empty modifiers don't
+    // transform; coveredSubLabelMask prevents duplicate rendering.
+    'tribixbite.cleverkeys.CanonicalLabelsTest',
   ]
 
   mainClass = 'org.junit.runner.JUnitCore'
